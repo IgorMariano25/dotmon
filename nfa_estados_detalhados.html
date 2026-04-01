@@ -1,0 +1,435 @@
+
+<style>
+* { box-sizing: border-box; }
+.wrap { padding: 16px 0; font-family: var(--font-sans); }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.tab { padding: 5px 12px; border-radius: 6px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-secondary); color: var(--color-text-secondary); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+.tab.active { background: var(--color-background-primary); color: var(--color-text-primary); border-color: var(--color-border-primary); }
+.content { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.states-list { display: flex; flex-direction: column; gap: 6px; }
+.state-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); cursor: pointer; transition: border-color .15s; }
+.state-row:hover { border-color: var(--color-border-secondary); }
+.state-row.active-state { border-color: #7F77DD; background: #EEEDFE; }
+@media (prefers-color-scheme: dark) { .state-row.active-state { background: #26215C; border-color: #7F77DD; } }
+.state-badge { min-width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
+.badge-init  { background: #EEEDFE; color: #3C3489; border: 1.5px solid #534AB7; }
+.badge-mid   { background: #E1F5EE; color: #085041; border: 1.5px solid #0F6E56; }
+.badge-final { background: #FAECE7; color: #712B13; border: 2px solid #993C1D; box-shadow: 0 0 0 2px #FAECE7, 0 0 0 3.5px #993C1D; }
+.state-info { flex: 1; }
+.state-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 2px; }
+.state-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.4; }
+.token-badge { display: inline-block; background: #F1EFE8; color: #444441; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: var(--font-mono); margin-top: 4px; }
+@media (prefers-color-scheme: dark) {
+  .badge-init  { background: #26215C; color: #CECBF6; }
+  .badge-mid   { background: #04342C; color: #9FE1CB; }
+  .badge-final { background: #4A1B0C; color: #F5C4B3; box-shadow: 0 0 0 2px #4A1B0C, 0 0 0 3.5px #993C1D; }
+  .token-badge { background: #2C2C2A; color: #D3D1C7; }
+}
+.diagram-panel { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); padding: 12px; }
+.regex-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 10px; font-family: var(--font-mono); }
+.transition-list { margin-top: 12px; border-top: 0.5px solid var(--color-border-tertiary); padding-top: 10px; }
+.trans-title { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 6px; }
+.trans-row { font-size: 11px; color: var(--color-text-secondary); padding: 4px 0; border-bottom: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 6px; }
+.trans-row:last-child { border-bottom: none; }
+.arr-sym { color: #7F77DD; font-weight: 500; }
+.leg { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--color-text-secondary); }
+.leg-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+</style>
+<div class="wrap">
+<div class="tabs" id="tabs"></div>
+<div class="leg">
+  <div class="leg-item"><div class="leg-dot" style="background:#EEEDFE;border:1.5px solid #534AB7"></div>Estado inicial</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#E1F5EE;border:1.5px solid #0F6E56"></div>Estado intermediário</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#FAECE7;border:2px solid #993C1D;box-shadow:0 0 0 2px #FAECE7,0 0 0 3.5px #993C1D"></div>Estado final</div>
+</div>
+<div class="content">
+  <div class="states-list" id="states-list"></div>
+  <div class="diagram-panel">
+    <div class="regex-label" id="regex-label"></div>
+    <svg id="nfa-svg" width="100%" viewBox="0 0 300 200"></svg>
+    <div class="transition-list">
+      <div class="trans-title">Tabela de transições</div>
+      <div id="trans-table"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const GROUPS = {
+  "Identificador": {
+    regex: "[a-zA-Z_][a-zA-Z0-9_]*",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda o primeiro caractere válido", token:"letra, A-Z ou _"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu o primeiro caractere (letra ou _) — aceita mais caracteres ou finaliza", token:"letra, 0-9, _"},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Lendo caracteres adicionais do identificador", token:"letra, 0-9, _ (loop)"},
+      {id:"qf", type:"final", label:"Estado 3 (final)", desc:"Identificador reconhecido com sucesso", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"[a-zA-Z_]"},
+      {from:"q1", to:"q2", label:"[a-zA-Z0-9_]"},
+      {from:"q2", to:"q2", label:"[a-zA-Z0-9_] (loop)"},
+      {from:"q1", to:"qf", label:"ε (1 char)"},
+      {from:"q2", to:"qf", label:"ε (fim)"}
+    ],
+    nodes: [{id:"q0",x:30,y:100},{id:"q1",x:120,y:100},{id:"q2",x:210,y:100},{id:"qf",x:270,y:100}]
+  },
+  "Tipos (Baby/Pup...)": {
+    regex: "\\bBaby\\b|\\bPup\\b|\\bRook\\b|\\bChamp\\b|\\bMoji\\b|\\bBit\\b",
+    states: [
+      {id:"q0",  type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda uma palavra-chave de tipo", token:"ε (bifurcação)"},
+      {id:"q1",  type:"mid",   label:"Estado 1", desc:"Ramo de leitura da keyword Baby", token:"Baby"},
+      {id:"q2",  type:"mid",   label:"Estado 2", desc:"Ramo de leitura da keyword Pup", token:"Pup"},
+      {id:"q3",  type:"mid",   label:"Estado 3", desc:"Ramo de leitura da keyword Rook", token:"Rook"},
+      {id:"q4",  type:"mid",   label:"Estado 4", desc:"Ramo de leitura da keyword Champ", token:"Champ"},
+      {id:"q5",  type:"mid",   label:"Estado 5", desc:"Ramo de leitura da keyword Moji", token:"Moji"},
+      {id:"q6",  type:"mid",   label:"Estado 6", desc:"Ramo de leitura da keyword Bit", token:"Bit"},
+      {id:"qf",  type:"final", label:"Estado 7 (final)", desc:"Tipo reconhecido — token de tipo emitido", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"ε"},{from:"q0", to:"q2", label:"ε"},{from:"q0", to:"q3", label:"ε"},
+      {from:"q0", to:"q4", label:"ε"},{from:"q0", to:"q5", label:"ε"},{from:"q0", to:"q6", label:"ε"},
+      {from:"q1", to:"qf", label:"Baby"},{from:"q2", to:"qf", label:"Pup"},{from:"q3", to:"qf", label:"Rook"},
+      {from:"q4", to:"qf", label:"Champ"},{from:"q5", to:"qf", label:"Moji"},{from:"q6", to:"qf", label:"Bit"}
+    ],
+    nodes:[{id:"q0",x:30,y:100},{id:"q1",x:130,y:20},{id:"q2",x:130,y:48},{id:"q3",x:130,y:76},{id:"q4",x:130,y:104},{id:"q5",x:130,y:132},{id:"q6",x:130,y:160},{id:"qf",x:250,y:100}]
+  },
+  "Literal inteiro": {
+    regex: "[0-9]+",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda o primeiro dígito", token:"0-9"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu ao menos um dígito — pode continuar ou finalizar", token:"0-9 (loop)"},
+      {id:"qf", type:"final", label:"Estado 2 (final)", desc:"Número inteiro reconhecido", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"[0-9]"},
+      {from:"q1", to:"q1", label:"[0-9] (loop)"},
+      {from:"q1", to:"qf", label:"ε"}
+    ],
+    nodes:[{id:"q0",x:40,y:100},{id:"q1",x:150,y:100},{id:"qf",x:260,y:100}]
+  },
+  "Literal decimal": {
+    regex: "[0-9]+\\.[0-9]+",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda dígitos da parte inteira", token:"0-9"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Lendo parte inteira — loop até encontrar ponto", token:"0-9 (loop)"},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu o ponto '.' — aguarda ao menos um dígito decimal", token:"0-9"},
+      {id:"q3", type:"mid",   label:"Estado 3", desc:"Lendo parte decimal — loop até fim", token:"0-9 (loop)"},
+      {id:"qf", type:"final", label:"Estado 4 (final)", desc:"Número decimal reconhecido", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"[0-9]"},
+      {from:"q1", to:"q1", label:"[0-9] (loop)"},
+      {from:"q1", to:"q2", label:"."},
+      {from:"q2", to:"q3", label:"[0-9]"},
+      {from:"q3", to:"q3", label:"[0-9] (loop)"},
+      {from:"q3", to:"qf", label:"ε"}
+    ],
+    nodes:[{id:"q0",x:20,y:100},{id:"q1",x:90,y:100},{id:"q2",x:165,y:100},{id:"q3",x:235,y:100},{id:"qf",x:285,y:100}]
+  },
+  "Literal string": {
+    regex: '"[^"]*"',
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda aspas de abertura '\"'", token:'"'},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu '\"' de abertura — aguarda conteúdo ou fechamento", token:"qualquer char exceto \""},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Lendo conteúdo da string — loop até '\"'", token:"[^\"]*"},
+      {id:"qf", type:"final", label:"Estado 3 (final)", desc:"Leu '\"' de fechamento — string reconhecida", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:'"'},
+      {from:"q1", to:"q2", label:"[^\"] (conteúdo)"},
+      {from:"q2", to:"q2", label:"[^\"] (loop)"},
+      {from:"q1", to:"qf", label:'"  (string vazia)'},
+      {from:"q2", to:"qf", label:'"  (fechamento)'}
+    ],
+    nodes:[{id:"q0",x:30,y:100},{id:"q1",x:120,y:100},{id:"q2",x:210,y:100},{id:"qf",x:275,y:100}]
+  },
+  "Literal char": {
+    regex: "'.'",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda aspa simples de abertura \"'\"", token:"'"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu \"'\" de abertura — aguarda exatamente um caractere", token:"qualquer char"},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu o caractere — aguarda aspa simples de fechamento", token:"'"},
+      {id:"qf", type:"final", label:"Estado 3 (final)", desc:"Char reconhecido com sucesso", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"'"},
+      {from:"q1", to:"q2", label:"qualquer char (.)"},
+      {from:"q2", to:"qf", label:"'"}
+    ],
+    nodes:[{id:"q0",x:30,y:100},{id:"q1",x:120,y:100},{id:"q2",x:210,y:100},{id:"qf",x:275,y:100}]
+  },
+  "Booleano": {
+    regex: "\\b(true|false)\\b",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda 't' ou 'f'", token:"t / f"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Ramo true — lendo 'true'", token:"r-u-e"},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Ramo false — lendo 'false'", token:"a-l-s-e"},
+      {id:"qf", type:"final", label:"Estado 3 (final)", desc:"Booleano reconhecido", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"t (→ true)"},
+      {from:"q0", to:"q2", label:"f (→ false)"},
+      {from:"q1", to:"qf", label:"rue"},
+      {from:"q2", to:"qf", label:"alse"}
+    ],
+    nodes:[{id:"q0",x:40,y:100},{id:"q1",x:150,y:55},{id:"q2",x:150,y:145},{id:"qf",x:265,y:100}]
+  },
+  "Spiral (While)": {
+    regex: "\\bSpiral\\b (condição)",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda a keyword Spiral", token:"Spiral"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu Spiral — aguarda '(' de abertura da condição", token:"("},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu '(' — aguarda a expressão de condição", token:"expressão"},
+      {id:"q3", type:"mid",   label:"Estado 3", desc:"Leu a condição — aguarda ')' de fechamento", token:")"},
+      {id:"q4", type:"mid",   label:"Estado 4", desc:"Leu ')' — aguarda ':' ou newline para iniciar bloco", token:": / newline"},
+      {id:"qf", type:"final", label:"Estado 5 (final)", desc:"Cabeçalho do loop reconhecido — inicia bloco indentado", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"Spiral"},
+      {from:"q1", to:"q2", label:"("},
+      {from:"q2", to:"q3", label:"[condição]"},
+      {from:"q3", to:"q4", label:")"},
+      {from:"q4", to:"qf", label:": / newline"}
+    ],
+    nodes:[{id:"q0",x:15,y:100},{id:"q1",x:75,y:100},{id:"q2",x:135,y:100},{id:"q3",x:195,y:100},{id:"q4",x:248,y:100},{id:"qf",x:290,y:100}]
+  },
+  "Loop (For)": {
+    regex: "\\bLoop\\b (init; cond; inc)",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda a keyword Loop", token:"Loop"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu Loop — aguarda '(' de abertura", token:"("},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu '(' — aguarda expressão de inicialização", token:"init expr"},
+      {id:"q3", type:"mid",   label:"Estado 3", desc:"Leu init — aguarda ';' separador", token:";"},
+      {id:"q4", type:"mid",   label:"Estado 4", desc:"Leu primeiro ';' — aguarda condição", token:"cond expr"},
+      {id:"q5", type:"mid",   label:"Estado 5", desc:"Leu condição — aguarda segundo ';'", token:";"},
+      {id:"q6", type:"mid",   label:"Estado 6", desc:"Leu segundo ';' — aguarda incremento", token:"inc expr"},
+      {id:"q7", type:"mid",   label:"Estado 7", desc:"Leu incremento — aguarda ')' de fechamento", token:")"},
+      {id:"qf", type:"final", label:"Estado 8 (final)", desc:"Cabeçalho do loop reconhecido — inicia bloco", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"Loop"},
+      {from:"q1", to:"q2", label:"("},
+      {from:"q2", to:"q3", label:"[init]"},
+      {from:"q3", to:"q4", label:";"},
+      {from:"q4", to:"q5", label:"[cond]"},
+      {from:"q5", to:"q6", label:";"},
+      {from:"q6", to:"q7", label:"[inc]"},
+      {from:"q7", to:"qf", label:")"}
+    ],
+    nodes:[{id:"q0",x:15,y:100},{id:"q1",x:55,y:100},{id:"q2",x:95,y:100},{id:"q3",x:135,y:100},{id:"q4",x:175,y:100},{id:"q5",x:215,y:100},{id:"q6",x:252,y:100},{id:"q7",x:280,y:60},{id:"qf",x:280,y:145}]
+  },
+  "Evo (If)": {
+    regex: "\\bEvo\\b (condição)",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda a keyword Evo", token:"Evo"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu Evo — aguarda '(' de abertura", token:"("},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu '(' — aguarda expressão condicional", token:"expressão"},
+      {id:"q3", type:"mid",   label:"Estado 3", desc:"Leu condição — aguarda ')' de fechamento", token:")"},
+      {id:"qf", type:"final", label:"Estado 4 (final)", desc:"Condicional reconhecida — inicia bloco", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"Evo"},
+      {from:"q1", to:"q2", label:"("},
+      {from:"q2", to:"q3", label:"[condição]"},
+      {from:"q3", to:"qf", label:")"}
+    ],
+    nodes:[{id:"q0",x:30,y:100},{id:"q1",x:110,y:100},{id:"q2",x:185,y:100},{id:"q3",x:245,y:100},{id:"qf",x:285,y:100}]
+  },
+  "Xros (Função)": {
+    regex: "\\bXros\\b nome(...)",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda a keyword Xros", token:"Xros"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu Xros — aguarda nome da função (identificador)", token:"[a-zA-Z_]..."},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu o nome — aguarda '(' de abertura dos parâmetros", token:"("},
+      {id:"q3", type:"mid",   label:"Estado 3", desc:"Leu '(' — aguarda parâmetros ou fechamento direto", token:"params / )"},
+      {id:"q4", type:"mid",   label:"Estado 4", desc:"Lendo parâmetros — separa por vírgula ou fecha", token:", / )"},
+      {id:"qf", type:"final", label:"Estado 5 (final)", desc:"Assinatura da função reconhecida — inicia corpo", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"Xros"},
+      {from:"q1", to:"q2", label:"[nome]"},
+      {from:"q2", to:"q3", label:"("},
+      {from:"q3", to:"q4", label:"[param]"},
+      {from:"q3", to:"qf", label:") (sem params)"},
+      {from:"q4", to:"q4", label:", [param] (loop)"},
+      {from:"q4", to:"qf", label:")"}
+    ],
+    nodes:[{id:"q0",x:20,y:100},{id:"q1",x:80,y:100},{id:"q2",x:150,y:100},{id:"q3",x:210,y:100},{id:"q4",x:260,y:55},{id:"qf",x:270,y:148}]
+  },
+  "Show (Print)": {
+    regex: "\\bShow\\b(…)",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda a keyword Show", token:"Show"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu Show — aguarda '(' de abertura do argumento", token:"("},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu '(' — aguarda expressão ou string a imprimir", token:"expressão"},
+      {id:"q3", type:"mid",   label:"Estado 3", desc:"Leu o argumento — aguarda ')' de fechamento", token:")"},
+      {id:"q4", type:"mid",   label:"Estado 4", desc:"Leu ')' — aguarda ';' de término do comando", token:";"},
+      {id:"qf", type:"final", label:"Estado 5 (final)", desc:"Comando de saída reconhecido com sucesso", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"Show"},
+      {from:"q1", to:"q2", label:"("},
+      {from:"q2", to:"q3", label:"[argumento]"},
+      {from:"q3", to:"q4", label:")"},
+      {from:"q4", to:"qf", label:";"}
+    ],
+    nodes:[{id:"q0",x:15,y:100},{id:"q1",x:75,y:100},{id:"q2",x:145,y:100},{id:"q3",x:205,y:100},{id:"q4",x:255,y:100},{id:"qf",x:290,y:100}]
+  },
+  "Comentário linha": {
+    regex: "//.*",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda o primeiro '/'", token:"/"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu o primeiro '/' — aguarda o segundo '/'", token:"/"},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu '//' — consome todo o restante da linha", token:"qualquer char"},
+      {id:"qf", type:"final", label:"Estado 3 (final)", desc:"Comentário de linha reconhecido até o fim da linha", token:"ε (newline)"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"/"},
+      {from:"q1", to:"q2", label:"/ (segundo)"},
+      {from:"q2", to:"q2", label:"[^\\n] (loop)"},
+      {from:"q2", to:"qf", label:"\\n / EOF"}
+    ],
+    nodes:[{id:"q0",x:30,y:100},{id:"q1",x:120,y:100},{id:"q2",x:210,y:100},{id:"qf",x:276,y:100}]
+  },
+  "Comentário bloco": {
+    regex: "/\\*[\\s\\S]*?\\*/",
+    states: [
+      {id:"q0", type:"init",  label:"Estado 0", desc:"Estado inicial — aguarda o primeiro '/'", token:"/"},
+      {id:"q1", type:"mid",   label:"Estado 1", desc:"Leu '/' — aguarda '*' para abrir o bloco", token:"*"},
+      {id:"q2", type:"mid",   label:"Estado 2", desc:"Leu '/*' — lendo conteúdo do bloco (loop)", token:"qualquer char"},
+      {id:"q3", type:"mid",   label:"Estado 3", desc:"Leu '*' — possível fechamento, aguarda '/'", token:"/ ou volta"},
+      {id:"qf", type:"final", label:"Estado 4 (final)", desc:"Leu '*/' — comentário de bloco reconhecido", token:"ε"}
+    ],
+    transitions: [
+      {from:"q0", to:"q1", label:"/"},
+      {from:"q1", to:"q2", label:"*"},
+      {from:"q2", to:"q2", label:"[^*] (loop)"},
+      {from:"q2", to:"q3", label:"* (possível fim)"},
+      {from:"q3", to:"qf", label:"/ (fecha bloco)"},
+      {from:"q3", to:"q2", label:"[^/] (volta)"}
+    ],
+    nodes:[{id:"q0",x:20,y:100},{id:"q1",x:85,y:100},{id:"q2",x:160,y:100},{id:"q3",x:230,y:100},{id:"qf",x:285,y:100}]
+  }
+};
+
+const COLS = {
+  init:  {fill:"#EEEDFE",stroke:"#534AB7",text:"#3C3489",cls:"badge-init"},
+  mid:   {fill:"#E1F5EE",stroke:"#0F6E56",text:"#085041",cls:"badge-mid"},
+  final: {fill:"#FAECE7",stroke:"#993C1D",text:"#712B13",cls:"badge-final"}
+};
+
+let currentGroup = Object.keys(GROUPS)[0];
+let activeStateIdx = -1;
+
+function buildTabs() {
+  const el = document.getElementById("tabs");
+  Object.keys(GROUPS).forEach(k => {
+    const b = document.createElement("button");
+    b.className = "tab" + (k === currentGroup ? " active" : "");
+    b.textContent = k;
+    b.onclick = () => {
+      currentGroup = k;
+      activeStateIdx = -1;
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      render();
+    };
+    el.appendChild(b);
+  });
+}
+
+function buildStatesList() {
+  const g = GROUPS[currentGroup];
+  const el = document.getElementById("states-list");
+  el.innerHTML = "";
+  g.states.forEach((s, i) => {
+    const c = COLS[s.type];
+    const row = document.createElement("div");
+    row.className = "state-row" + (i === activeStateIdx ? " active-state" : "");
+    row.innerHTML = `
+      <div class="state-badge ${c.cls}">${s.id}</div>
+      <div class="state-info">
+        <div class="state-name">${s.label}</div>
+        <div class="state-desc">${s.desc}</div>
+        <div class="token-badge">${s.token}</div>
+      </div>`;
+    row.onclick = () => { activeStateIdx = i; render(); };
+    el.appendChild(row);
+  });
+}
+
+function buildTransTable() {
+  const g = GROUPS[currentGroup];
+  const el = document.getElementById("trans-table");
+  el.innerHTML = "";
+  const active = activeStateIdx >= 0 ? g.states[activeStateIdx].id : null;
+  g.transitions.forEach(t => {
+    const highlighted = active && (t.from === active || t.to === active);
+    const row = document.createElement("div");
+    row.className = "trans-row";
+    row.style.opacity = active && !highlighted ? "0.35" : "1";
+    row.innerHTML = `<strong style="color:var(--color-text-primary);min-width:28px">${t.from}</strong><span class="arr-sym">→</span><strong style="color:var(--color-text-primary);min-width:28px">${t.to}</strong><span>${t.label}</span>`;
+    el.appendChild(row);
+  });
+}
+
+function drawSVG() {
+  const g = GROUPS[currentGroup];
+  const svg = document.getElementById("nfa-svg");
+  const nodeMap = {};
+  g.nodes.forEach(n => nodeMap[n.id] = n);
+  const activeId = activeStateIdx >= 0 ? g.states[activeStateIdx].id : null;
+  const R = 18;
+
+  let html = `<defs><marker id="arw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
+
+  g.transitions.forEach(t => {
+    const s = nodeMap[t.from], e = nodeMap[t.to];
+    if (!s || !e) return;
+    const isActive = activeId && (t.from === activeId || t.to === activeId);
+    const opacity = activeId && !isActive ? "0.2" : "1";
+    const stroke = isActive ? "#7F77DD" : "#888780";
+    const sw = isActive ? "1.5" : "0.8";
+
+    if (t.from === t.to) {
+      html += `<path d="M${s.x-12} ${s.y-R} Q${s.x-30} ${s.y-45} ${s.x} ${s.y-R-12} Q${s.x+30} ${s.y-45} ${s.x+12} ${s.y-R}" fill="none" stroke="${stroke}" stroke-width="${sw}" marker-end="url(#arw)" opacity="${opacity}"/>`;
+      return;
+    }
+    const dx = e.x-s.x, dy = e.y-s.y, dist = Math.sqrt(dx*dx+dy*dy);
+    const ux = dx/dist, uy = dy/dist;
+    html += `<line x1="${s.x+ux*R}" y1="${s.y+uy*R}" x2="${e.x-ux*R}" y2="${e.y-uy*R}" stroke="${stroke}" stroke-width="${sw}" marker-end="url(#arw)" opacity="${opacity}"/>`;
+  });
+
+  g.nodes.forEach(n => {
+    const st = g.states.find(s => s.id === n.id);
+    const c = COLS[st.type];
+    const isActive = n.id === activeId;
+    const fill = c.fill;
+    const strokeW = isActive ? "2.5" : "1.2";
+    const opacity = activeId && !isActive ? "0.4" : "1";
+
+    if (n.id === "q0") {
+      html += `<line x1="${n.x-R-14}" y1="${n.y}" x2="${n.x-R-2}" y2="${n.y}" stroke="#888780" stroke-width="1" marker-end="url(#arw)" opacity="${activeId ? '0.3' : '1'}"/>`;
+    }
+    if (st.type === "final") {
+      html += `<circle cx="${n.x}" cy="${n.y}" r="${R+5}" fill="none" stroke="${c.stroke}" stroke-width="1" opacity="${opacity}"/>`;
+    }
+    html += `<circle cx="${n.x}" cy="${n.y}" r="${R}" fill="${fill}" stroke="${c.stroke}" stroke-width="${strokeW}" opacity="${opacity}"/>`;
+    html += `<text x="${n.x}" y="${n.y}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="500" fill="${c.text}" font-family="var(--font-sans)" opacity="${opacity}">${n.id}</text>`;
+  });
+
+  document.getElementById("regex-label").textContent = "Regex: " + GROUPS[currentGroup].regex;
+  svg.innerHTML = html;
+}
+
+function render() {
+  buildStatesList();
+  buildTransTable();
+  drawSVG();
+}
+
+buildTabs();
+render();
+</script>

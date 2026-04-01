@@ -1,0 +1,30 @@
+// Battle System Module
+// Handles combat logic between Digimons
+
+Start
+{
+    // Attacker stats
+    Moji atacante = "WarGreymon";
+    Champ ataque = 850;
+    Champ velocidade = 120;
+
+    // Defender stats
+    Moji defensor = "MetalGarurumon";
+    Champ defesa = 780;
+    Champ hp = 1200;
+
+    // Calculate damage
+    Champ dano = ataque - defesa;
+
+    Evo (dano > 0) {
+        hp = hp - dano;
+        Show("Dano causado!");
+        Show(dano);
+    }
+    FailEvo {
+        Show("Ataque bloqueado!");
+    }
+
+    Show(hp);
+}
+Finish

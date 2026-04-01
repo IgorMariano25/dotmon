@@ -1,0 +1,21 @@
+// Digimon Data Module
+// Base definitions for Digimon creatures
+
+Start
+{
+    // Agumon stats
+    Moji nome = "Agumon";
+    Baby ataque = 45;
+    Baby defesa = 30;
+    Pup hp = 120;
+    Bit ativo = true;
+
+    // Show Digimon info
+    Show("=== Digimon Info ===");
+    Show(nome);
+    Show(ataque);
+    Show(defesa);
+    Show(hp);
+    Show(ativo);
+}
+Finish

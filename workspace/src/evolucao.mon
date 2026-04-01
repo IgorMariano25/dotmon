@@ -1,0 +1,33 @@
+// Evolution System Module
+// Manages Digimon evolution paths
+
+Start
+{
+    Moji digimon = "Koromon";
+    Baby stage = 1;
+    Pup xp = 500;
+
+    // Evolution check
+    Evo (xp > 1000) {
+        stage = 4;
+        digimon = "WarGreymon";
+        Show("Mega Evolution!");
+    }
+    AltEvo (xp > 500) {
+        stage = 3;
+        digimon = "Greymon";
+        Show("Champion Evolution!");
+    }
+    AltEvo (xp > 100) {
+        stage = 2;
+        digimon = "Agumon";
+        Show("Rookie Evolution!");
+    }
+    FailEvo {
+        Show("Not enough XP");
+    }
+
+    Show(digimon);
+    Show(stage);
+}
+Finish

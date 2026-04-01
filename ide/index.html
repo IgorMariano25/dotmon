@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
 </head>
 <body>
   <div class="ide-window">
@@ -240,16 +241,9 @@
             <span class="breadcrumb-item active">main.mon</span>
           </div>
 
-          <!-- Code Editor -->
+          <!-- Code Editor (Monaco) -->
           <div class="editor-scroll" id="editorScroll">
-            <div class="editor-content" id="editorContent">
-              <div class="line-numbers" id="lineNumbers"></div>
-              <pre class="code-area" id="codeArea"></pre>
-            </div>
-            <div class="minimap" id="minimap">
-              <div class="minimap-content" id="minimapContent"></div>
-              <div class="minimap-viewport" id="minimapViewport"></div>
-            </div>
+            <div id="monacoEditorContainer" style="width:100%;height:100%;"></div>
           </div>
         </div>
 
@@ -293,12 +287,7 @@
                 </button>
               </div>
             </div>
-            <div class="panel-editor-scroll">
-              <div class="panel-editor-content">
-                <div class="line-numbers panel-line-numbers" id="cLineNumbers"></div>
-                <pre class="code-area panel-code-area" id="cCodeArea"></pre>
-              </div>
-            </div>
+            <div class="panel-editor-scroll" id="cEditorContainer" style="height:100%;"></div>
           </div>
 
           <!-- Errors Panel -->
@@ -377,17 +366,13 @@
       <div class="bottom-content">
         <div class="bottom-pane active" id="bottomTerminal">
           <div class="terminal-lines" id="terminalContent">
-            <div class="terminal-line"><span class="terminal-prompt">dotmon@project</span> <span class="terminal-path">~/dotmon-project</span> <span class="terminal-cmd">$</span> dotmon compile src/main.mon</div>
-            <div class="terminal-line terminal-info">[info] dotmon compiler v0.1.0</div>
-            <div class="terminal-line terminal-info">[info] Parsing src/main.mon...</div>
-            <div class="terminal-line terminal-info">[info] Lexical analysis complete: 47 tokens</div>
-            <div class="terminal-line terminal-info">[info] Syntax analysis complete: AST generated</div>
-            <div class="terminal-line terminal-warning">[warn] Variable 'pronto' declared but never used (line 9)</div>
-            <div class="terminal-line terminal-error">[error] Undeclared identifier 'poder' at line 28, col 12</div>
-            <div class="terminal-line terminal-error">[error] Type mismatch: cannot assign Moji to Baby at line 32</div>
-            <div class="terminal-line terminal-info">[info] C code generated: generated/main.c</div>
-            <div class="terminal-line terminal-success">[done] Compilation finished with 2 errors, 1 warning</div>
-            <div class="terminal-line"><span class="terminal-prompt">dotmon@project</span> <span class="terminal-path">~/dotmon-project</span> <span class="terminal-cmd">$</span> <span class="terminal-cursor"></span></div>
+            <div class="terminal-line terminal-info">[info] dotmon IDE v0.1.0 — Type 'help' for commands</div>
+            <div class="terminal-input-line">
+              <span class="terminal-prompt">dotmon@project</span>
+              <span class="terminal-path">~/dotmon-project</span>
+              <span class="terminal-cmd">$</span>
+              <input type="text" class="terminal-input" id="terminalInput" spellcheck="false" autocomplete="off">
+            </div>
           </div>
         </div>
         <div class="bottom-pane" id="bottomOutput">
@@ -440,6 +425,9 @@
           <span class="file-icon mon-icon" style="font-size:9px; width:14px; height:14px; line-height:14px;">M</span>
           dotmon
         </div>
+        <div class="statusbar-item" id="statusBackend" title="Status do backend">
+          <span style="color:#858585">&#9675; Local</span>
+        </div>
       </div>
     </div>
   </div>
@@ -483,6 +471,7 @@
     </div>
   </div>
 
+  <script src="js/compiler.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

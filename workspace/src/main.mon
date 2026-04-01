@@ -1,0 +1,33 @@
+// Digimon Evolution System
+// Main game logic for dotmon
+
+Start
+{
+    // Define base stats
+    Baby nivel = 15;
+    Pup experiencia = 5000;
+    Moji nome = "Agumon";
+    Moji evolucao = "Greymon";
+    Bit pronto = true;
+
+    // Check evolution conditions
+    Evo (nivel > 15) {
+        Show("Mega evolucao disponivel!");
+        Show(evolucao);
+    }
+    AltEvo (nivel == 10) {
+        Show("Evolucao padrao");
+        Show(nome);
+    }
+    FailEvo {
+        Show("Nivel insuficiente");
+    }
+
+    // Battle calculation
+    Champ dano = experiencia * nivel;
+    Show(dano);
+
+    // Display results
+    Show("Batalha concluida!");
+}
+Finish

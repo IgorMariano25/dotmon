@@ -1,0 +1,23 @@
+// Utility Module
+// Helper functions and common calculations
+
+Start
+{
+    // Power calculation
+    Baby base = 10;
+    Baby multiplicador = 3;
+    Champ poder = base * multiplicador;
+
+    Show("Poder calculado:");
+    Show(poder);
+
+    // Status check
+    Bit is_forte = true;
+    Evo (poder > 25) {
+        Show("Digimon forte!");
+    }
+    FailEvo {
+        Show("Digimon fraco...");
+    }
+}
+Finish
