@@ -3,8 +3,7 @@
    Monaco Editor + Compiler Integration + File System API
    ============================================================ */
 
-document.addEventListener('DOMContentLoaded', () => {
-
+document.addEventListener("DOMContentLoaded", () => {
   // ─── API Client ──────────────────────────────────────────
   const API_BASE = window.location.origin;
   let backendAvailable = false;
@@ -12,51 +11,70 @@ document.addEventListener('DOMContentLoaded', () => {
   const api = {
     async check() {
       try {
-        const r = await fetch(`${API_BASE}/api/files`, { signal: AbortSignal.timeout(2000) });
+        const r = await fetch(`${API_BASE}/api/files`, {
+          signal: AbortSignal.timeout(2000),
+        });
         return r.ok;
-      } catch { return false; }
+      } catch {
+        return false;
+      }
     },
     async loadProject() {
       const r = await fetch(`${API_BASE}/api/project`);
-      if (!r.ok) throw new Error('Falha ao carregar projeto');
-      return (await r.json()).files;
+      if (!r.ok) throw new Error("Falha ao carregar projeto");
+      const data = await r.json();
+      const files = data.files;
+      if (data.folders) files.__folders__ = data.folders;
+      return files;
     },
     async saveFile(path, content) {
       await fetch(`${API_BASE}/api/files/${path}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
       });
     },
     async createFile(path, content) {
       await fetch(`${API_BASE}/api/files`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, content })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path, content }),
       });
     },
     async deleteFile(path) {
-      await fetch(`${API_BASE}/api/files/${path}`, { method: 'DELETE' });
+      await fetch(`${API_BASE}/api/files/${path}`, { method: "DELETE" });
     },
     async renameFile(oldPath, newPath) {
       await fetch(`${API_BASE}/api/files/${oldPath}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ new_path: newPath })
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_path: newPath }),
       });
     },
     async saveGenerated(filename, content) {
       await fetch(`${API_BASE}/api/generated/${filename}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
       });
-    }
+    },
+    async createFolder(path) {
+      await fetch(`${API_BASE}/api/folders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+    },
+    async deleteFolder(path) {
+      await fetch(`${API_BASE}/api/folders/${path}`, {
+        method: "DELETE",
+      });
+    },
   };
 
   // ─── Virtual File System ─────────────────────────────────
   const DEFAULT_FILES = {
-    'src/main.mon': `// Digimon Evolution System
+    "src/main.mon": `// Digimon Evolution System
 // Main game logic for dotmon
 
 Start
@@ -90,7 +108,7 @@ Start
 }
 Finish
 `,
-    'src/batalha.mon': `// Battle System Module
+    "src/batalha.mon": `// Battle System Module
 // Handles combat logic between Digimons
 
 Start
@@ -121,7 +139,7 @@ Start
 }
 Finish
 `,
-    'src/evolucao.mon': `// Evolution System Module
+    "src/evolucao.mon": `// Evolution System Module
 // Manages Digimon evolution paths
 
 Start
@@ -155,7 +173,7 @@ Start
 }
 Finish
 `,
-    'src/digimon.mon': `// Digimon Data Module
+    "src/digimon.mon": `// Digimon Data Module
 // Base definitions for Digimon creatures
 
 Start
@@ -176,7 +194,7 @@ Start
 }
 Finish
 `,
-    'src/utils.mon': `// Utility Module
+    "src/utils.mon": `// Utility Module
 // Helper functions and common calculations
 
 Start
@@ -199,14 +217,20 @@ Start
     }
 }
 Finish
-`
+`,
   };
 
   // Load from backend API with localStorage fallback
   let fileSystem = {};
+  let emptyFolders = new Set();
 
   function saveFS() {
-    try { localStorage.setItem('dotmon-fs', JSON.stringify(fileSystem)); } catch (_) { /* ignore */ }
+    try {
+      localStorage.setItem("dotmon-fs", JSON.stringify(fileSystem));
+      localStorage.setItem("dotmon-folders", JSON.stringify([...emptyFolders]));
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   function saveFileToBackend(path) {
@@ -219,188 +243,268 @@ Finish
     backendAvailable = await api.check();
     if (backendAvailable) {
       try {
-        fileSystem = await api.loadProject();
+        const project = await api.loadProject();
+        fileSystem = project;
+        // Load empty folders from backend if returned separately
+        if (project.__folders__) {
+          project.__folders__.forEach((f) => emptyFolders.add(f));
+          delete fileSystem.__folders__;
+        }
         saveFS(); // sync to localStorage as cache
         updateBackendStatus(true);
         return;
-      } catch (_) { backendAvailable = false; }
+      } catch (_) {
+        backendAvailable = false;
+      }
     }
     // Fallback: localStorage or defaults
     try {
-      const saved = localStorage.getItem('dotmon-fs');
+      const saved = localStorage.getItem("dotmon-fs");
       if (saved) fileSystem = JSON.parse(saved);
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
     if (Object.keys(fileSystem).length === 0) fileSystem = { ...DEFAULT_FILES };
+    // Load empty folders from localStorage
+    try {
+      const savedFolders = localStorage.getItem("dotmon-folders");
+      if (savedFolders) emptyFolders = new Set(JSON.parse(savedFolders));
+    } catch (_) {
+      /* ignore */
+    }
     updateBackendStatus(false);
   }
 
   function updateBackendStatus(connected) {
-    const el = document.getElementById('statusBackend');
+    const el = document.getElementById("statusBackend");
     if (!el) return;
     el.innerHTML = connected
       ? '<span style="color:#4ec9b0">● API</span>'
       : '<span style="color:#858585">○ Local</span>';
-    el.title = connected ? 'Conectado ao backend FastAPI' : 'Modo offline (localStorage)';
+    el.title = connected
+      ? "Conectado ao backend FastAPI"
+      : "Modo offline (localStorage)";
   }
 
   // ─── Compilation state ─────────────────────────────────────
   let compiledResults = {};
-  let currentFile = 'src/main.mon';
+  let currentFile = "src/main.mon";
   let mainEditor = null;
   let cEditor = null;
 
   // ─── Monaco Setup ──────────────────────────────────────────
   require.config({
-    paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }
+    paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs" },
   });
 
-  require(['vs/editor/editor.main'], function () {
-
+  require(["vs/editor/editor.main"], function () {
     // Register dotmon language
-    monaco.languages.register({ id: 'dotmon' });
+    monaco.languages.register({ id: "dotmon" });
 
-    monaco.languages.setMonarchTokensProvider('dotmon', {
-      keywords: ['Start', 'Finish', 'Evo', 'AltEvo', 'FailEvo', 'Loop', 'Spiral',
-                 'Jam', 'Skip', 'Xros', 'Send', 'World', 'Core', 'Call'],
-      typeKeywords: ['Baby', 'Pup', 'Rook', 'Champ', 'Moji', 'Bit'],
-      builtins: ['Show', 'Ask'],
-      operators: ['=', '==', '!=', '>', '<', '>=', '<=', '+', '-', '*', '/'],
+    monaco.languages.setMonarchTokensProvider("dotmon", {
+      keywords: [
+        "Start",
+        "Finish",
+        "Evo",
+        "AltEvo",
+        "FailEvo",
+        "Loop",
+        "Spiral",
+        "Jam",
+        "Skip",
+        "Xros",
+        "Send",
+        "World",
+        "Core",
+        "Call",
+      ],
+      typeKeywords: ["Baby", "Pup", "Rook", "Champ", "Moji", "Bit"],
+      builtins: ["Show", "Ask"],
+      operators: ["=", "==", "!=", ">", "<", ">=", "<=", "+", "-", "*", "/"],
       symbols: /[=><!~?:&|+\-*\/\^%]+/,
 
       tokenizer: {
         root: [
-          [/\/\/.*$/, 'comment'],
-          [/\/\*/, 'comment', '@comment'],
-          [/"[^"\\]*(?:\\.[^"\\]*)*"/, 'string'],
-          [/'[^'\\]'/, 'string.char'],
-          [/\b(true|false)\b/, 'keyword.boolean'],
-          [/\b\d+\.\d+\b/, 'number.float'],
-          [/\b\d+\b/, 'number'],
-          [/[a-zA-Z_]\w*/, {
-            cases: {
-              '@keywords': 'keyword',
-              '@typeKeywords': 'type',
-              '@builtins': 'support.function',
-              '@default': 'identifier'
-            }
-          }],
-          [/[{}()]/, '@brackets'],
-          [/[;,.]/, 'delimiter'],
-          [/@symbols/, {
-            cases: {
-              '@operators': 'operator',
-              '@default': ''
-            }
-          }],
-          [/\s+/, 'white']
+          [/\/\/.*$/, "comment"],
+          [/\/\*/, "comment", "@comment"],
+          [/"[^"\\]*(?:\\.[^"\\]*)*"/, "string"],
+          [/'[^'\\]'/, "string.char"],
+          [/\b(true|false)\b/, "keyword.boolean"],
+          [/\b\d+\.\d+\b/, "number.float"],
+          [/\b\d+\b/, "number"],
+          [
+            /[a-zA-Z_]\w*/,
+            {
+              cases: {
+                "@keywords": "keyword",
+                "@typeKeywords": "type",
+                "@builtins": "support.function",
+                "@default": "identifier",
+              },
+            },
+          ],
+          [/[{}()]/, "@brackets"],
+          [/[;,.]/, "delimiter"],
+          [
+            /@symbols/,
+            {
+              cases: {
+                "@operators": "operator",
+                "@default": "",
+              },
+            },
+          ],
+          [/\s+/, "white"],
         ],
         comment: [
-          [/[^/*]+/, 'comment'],
-          [/\*\//, 'comment', '@pop'],
-          [/[/*]/, 'comment']
-        ]
-      }
+          [/[^/*]+/, "comment"],
+          [/\*\//, "comment", "@pop"],
+          [/[/*]/, "comment"],
+        ],
+      },
     });
 
     // Custom dark theme matching the IDE design
-    monaco.editor.defineTheme('dotmon-dark', {
-      base: 'vs-dark',
+    monaco.editor.defineTheme("dotmon-dark", {
+      base: "vs-dark",
       inherit: true,
       rules: [
-        { token: 'keyword', foreground: 'c586c0', fontStyle: 'bold' },
-        { token: 'type', foreground: '4ec9b0' },
-        { token: 'support.function', foreground: 'dcdcaa' },
-        { token: 'string', foreground: 'ce9178' },
-        { token: 'string.char', foreground: 'ce9178' },
-        { token: 'number', foreground: 'b5cea8' },
-        { token: 'number.float', foreground: 'b5cea8' },
-        { token: 'keyword.boolean', foreground: '569cd6' },
-        { token: 'comment', foreground: '6a9955', fontStyle: 'italic' },
-        { token: 'identifier', foreground: '9cdcfe' },
-        { token: 'operator', foreground: 'd4d4d4' },
-        { token: 'delimiter', foreground: 'ffd700' },
+        { token: "keyword", foreground: "c586c0", fontStyle: "bold" },
+        { token: "type", foreground: "4ec9b0" },
+        { token: "support.function", foreground: "dcdcaa" },
+        { token: "string", foreground: "ce9178" },
+        { token: "string.char", foreground: "ce9178" },
+        { token: "number", foreground: "b5cea8" },
+        { token: "number.float", foreground: "b5cea8" },
+        { token: "keyword.boolean", foreground: "569cd6" },
+        { token: "comment", foreground: "6a9955", fontStyle: "italic" },
+        { token: "identifier", foreground: "9cdcfe" },
+        { token: "operator", foreground: "d4d4d4" },
+        { token: "delimiter", foreground: "ffd700" },
       ],
       colors: {
-        'editor.background': '#1e1e1e',
-        'editor.foreground': '#cccccc',
-        'editor.lineHighlightBackground': '#ffffff0f',
-        'editor.selectionBackground': '#264f78',
-        'editorCursor.foreground': '#ffffff',
-        'editorLineNumber.foreground': '#5a5a5a',
-        'editorLineNumber.activeForeground': '#cccccc',
-        'editorGutter.background': '#1e1e1e',
-        'minimap.background': '#1e1e1e',
-      }
+        "editor.background": "#1e1e1e",
+        "editor.foreground": "#cccccc",
+        "editor.lineHighlightBackground": "#ffffff0f",
+        "editor.selectionBackground": "#264f78",
+        "editorCursor.foreground": "#ffffff",
+        "editorLineNumber.foreground": "#5a5a5a",
+        "editorLineNumber.activeForeground": "#cccccc",
+        "editorGutter.background": "#1e1e1e",
+        "minimap.background": "#1e1e1e",
+      },
     });
 
     // Autocompletion
-    monaco.languages.registerCompletionItemProvider('dotmon', {
+    monaco.languages.registerCompletionItemProvider("dotmon", {
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position);
         const range = {
           startLineNumber: position.lineNumber,
           endLineNumber: position.lineNumber,
           startColumn: word.startColumn,
-          endColumn: word.endColumn
+          endColumn: word.endColumn,
         };
         const suggestions = [
-          ...['Baby', 'Pup', 'Rook', 'Champ', 'Moji', 'Bit'].map(t => ({
-            label: t, kind: monaco.languages.CompletionItemKind.TypeParameter,
-            insertText: t, range, detail: 'Tipo dotmon'
+          ...["Baby", "Pup", "Rook", "Champ", "Moji", "Bit"].map((t) => ({
+            label: t,
+            kind: monaco.languages.CompletionItemKind.TypeParameter,
+            insertText: t,
+            range,
+            detail: "Tipo dotmon",
           })),
-          ...['Start', 'Finish', 'Evo', 'AltEvo', 'FailEvo', 'Loop', 'Spiral',
-              'Jam', 'Skip', 'Xros', 'Send', 'Show', 'Ask'].map(k => ({
-            label: k, kind: monaco.languages.CompletionItemKind.Keyword,
-            insertText: k, range, detail: 'Keyword dotmon'
+          ...[
+            "Start",
+            "Finish",
+            "Evo",
+            "AltEvo",
+            "FailEvo",
+            "Loop",
+            "Spiral",
+            "Jam",
+            "Skip",
+            "Xros",
+            "Send",
+            "Show",
+            "Ask",
+          ].map((k) => ({
+            label: k,
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: k,
+            range,
+            detail: "Keyword dotmon",
           })),
-          { label: 'Start...Finish', kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: 'Start\n{\n    ${1}\n}\nFinish\n',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range, detail: 'Programa dotmon completo' },
-          { label: 'Evo...FailEvo', kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: 'Evo (${1:condition}) {\n    ${2}\n}\nFailEvo {\n    ${3}\n}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range, detail: 'Condicional Evo/FailEvo' },
-          { label: 'Show()', kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: 'Show(${1:value});',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range, detail: 'Imprimir valor' },
-          { label: 'Loop()', kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: 'Loop (${1:condition}) {\n    ${2}\n}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range, detail: 'Loop while' },
+          {
+            label: "Start...Finish",
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: "Start\n{\n    ${1}\n}\nFinish\n",
+            insertTextRules:
+              monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+            detail: "Programa dotmon completo",
+          },
+          {
+            label: "Evo...FailEvo",
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText:
+              "Evo (${1:condition}) {\n    ${2}\n}\nFailEvo {\n    ${3}\n}",
+            insertTextRules:
+              monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+            detail: "Condicional Evo/FailEvo",
+          },
+          {
+            label: "Show()",
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: "Show(${1:value});",
+            insertTextRules:
+              monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+            detail: "Imprimir valor",
+          },
+          {
+            label: "Loop()",
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: "Loop (${1:condition}) {\n    ${2}\n}",
+            insertTextRules:
+              monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+            detail: "Loop while",
+          },
         ];
         return { suggestions };
-      }
+      },
     });
 
     // ─── Create Editors ──────────────────────────────────────
-    const editorContainer = document.getElementById('monacoEditorContainer');
+    const editorContainer = document.getElementById("monacoEditorContainer");
     mainEditor = monaco.editor.create(editorContainer, {
-      value: fileSystem[currentFile] || '',
-      language: 'dotmon',
-      theme: 'dotmon-dark',
-      fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+      value: fileSystem[currentFile] || "",
+      language: "dotmon",
+      theme: "dotmon-dark",
+      fontFamily:
+        "'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace",
       fontSize: 13,
       lineHeight: 22,
       minimap: { enabled: true },
       scrollBeyondLastLine: false,
       automaticLayout: true,
       tabSize: 4,
-      renderWhitespace: 'selection',
+      renderWhitespace: "selection",
       bracketPairColorization: { enabled: true },
       smoothScrolling: true,
-      cursorBlinking: 'smooth',
-      cursorSmoothCaretAnimation: 'on',
-      padding: { top: 8 }
+      cursorBlinking: "smooth",
+      cursorSmoothCaretAnimation: "on",
+      padding: { top: 8 },
     });
 
-    const cContainer = document.getElementById('cEditorContainer');
+    const cContainer = document.getElementById("cEditorContainer");
     cEditor = monaco.editor.create(cContainer, {
-      value: '// Compile a .mon file to see C output here',
-      language: 'c',
-      theme: 'dotmon-dark',
-      fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+      value: "// Compile a .mon file to see C output here",
+      language: "c",
+      theme: "dotmon-dark",
+      fontFamily:
+        "'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace",
       fontSize: 12,
       lineHeight: 20,
       minimap: { enabled: false },
@@ -408,7 +512,7 @@ Finish
       automaticLayout: true,
       readOnly: true,
       tabSize: 4,
-      padding: { top: 4 }
+      padding: { top: 4 },
     });
 
     // Real-time diagnostics as you type
@@ -431,34 +535,37 @@ Finish
       doCompile(currentFile);
       renderEditor(currentFile);
       renderFileTree();
-      activateTab('src/main.mon');
+      activateTab("src/main.mon");
     });
 
     // ─── Diagnostics (real-time) ─────────────────────────────
     function runDiagnostics() {
       const source = mainEditor.getValue();
       if (!source.trim()) {
-        monaco.editor.setModelMarkers(mainEditor.getModel(), 'dotmon', []);
+        monaco.editor.setModelMarkers(mainEditor.getModel(), "dotmon", []);
         return;
       }
       try {
         const result = DotmonCompiler.compile(source, currentFile);
         setMonacoMarkers(result.diagnostics);
-      } catch (_) { /* silent */ }
+      } catch (_) {
+        /* silent */
+      }
     }
 
     function setMonacoMarkers(diagnostics) {
-      const markers = diagnostics.map(d => ({
-        severity: d.severity === 'error'
-          ? monaco.MarkerSeverity.Error
-          : monaco.MarkerSeverity.Warning,
+      const markers = diagnostics.map((d) => ({
+        severity:
+          d.severity === "error"
+            ? monaco.MarkerSeverity.Error
+            : monaco.MarkerSeverity.Warning,
         message: d.message,
         startLineNumber: d.line,
         startColumn: d.column,
         endLineNumber: d.line,
-        endColumn: d.endColumn || d.column + 1
+        endColumn: d.endColumn || d.column + 1,
       }));
-      monaco.editor.setModelMarkers(mainEditor.getModel(), 'dotmon', markers);
+      monaco.editor.setModelMarkers(mainEditor.getModel(), "dotmon", markers);
     }
 
     // ─── Compile Pipeline ────────────────────────────────────
@@ -473,9 +580,10 @@ Finish
       compiledResults[filename] = result;
 
       // Update C editor
-      cEditor.setValue(result.cCode || '// Compilation failed');
-      const cFileName = filename.replace('src/', '').replace('.mon', '.c');
-      document.querySelector('.panel-filename').textContent = `generated/${cFileName}`;
+      cEditor.setValue(result.cCode || "// Compilation failed");
+      const cFileName = filename.replace("src/", "").replace(".mon", ".c");
+      document.querySelector(".panel-filename").textContent =
+        `generated/${cFileName}`;
 
       // Save generated C to backend
       if (backendAvailable && result.cCode) {
@@ -486,35 +594,56 @@ Finish
       renderErrors(result.diagnostics);
 
       // Update AST panel
-      document.getElementById('astContent').textContent = result.astString || 'No AST available';
+      document.getElementById("astContent").textContent =
+        result.astString || "No AST available";
 
       // Update markers
       setMonacoMarkers(result.diagnostics);
 
       // Update status bar
-      const errCount = result.diagnostics.filter(d => d.severity === 'error').length;
-      const warnCount = result.diagnostics.filter(d => d.severity === 'warning').length;
+      const errCount = result.diagnostics.filter(
+        (d) => d.severity === "error",
+      ).length;
+      const warnCount = result.diagnostics.filter(
+        (d) => d.severity === "warning",
+      ).length;
       updateStatusErrors(errCount, warnCount);
       updateErrorBadge(errCount + warnCount);
 
       // Terminal output
       const lines = [];
-      lines.push({ cls: 'terminal-info', text: `[info] dotmon compiler v0.1.0` });
-      lines.push({ cls: 'terminal-info', text: `[info] Compiling ${filename}...` });
-      lines.push({ cls: 'terminal-info', text: `[info] Lexical analysis: ${result.tokens.length} tokens` });
+      lines.push({
+        cls: "terminal-info",
+        text: `[info] dotmon compiler v0.1.0`,
+      });
+      lines.push({
+        cls: "terminal-info",
+        text: `[info] Compiling ${filename}...`,
+      });
+      lines.push({
+        cls: "terminal-info",
+        text: `[info] Lexical analysis: ${result.tokens.length} tokens`,
+      });
       if (result.ast) {
-        lines.push({ cls: 'terminal-info', text: `[info] Syntax analysis: AST generated` });
+        lines.push({
+          cls: "terminal-info",
+          text: `[info] Syntax analysis: AST generated`,
+        });
       }
       for (const d of result.diagnostics) {
-        const cls = d.severity === 'error' ? 'terminal-error' : 'terminal-warning';
-        const prefix = d.severity === 'error' ? '[error]' : '[warn]';
+        const cls =
+          d.severity === "error" ? "terminal-error" : "terminal-warning";
+        const prefix = d.severity === "error" ? "[error]" : "[warn]";
         lines.push({ cls, text: `${prefix} ${d.message} (line ${d.line})` });
       }
       if (result.cCode) {
-        lines.push({ cls: 'terminal-info', text: `[info] C code generated` });
+        lines.push({ cls: "terminal-info", text: `[info] C code generated` });
       }
-      const status = errCount > 0 ? 'terminal-error' : 'terminal-success';
-      lines.push({ cls: status, text: `[done] Compilation finished in ${elapsed}ms — ${errCount} error(s), ${warnCount} warning(s)` });
+      const status = errCount > 0 ? "terminal-error" : "terminal-success";
+      lines.push({
+        cls: status,
+        text: `[done] Compilation finished in ${elapsed}ms — ${errCount} error(s), ${warnCount} warning(s)`,
+      });
       appendTerminalBlock(lines);
 
       return result;
@@ -528,67 +657,74 @@ Finish
 
       mainEditor.setValue(content);
       const model = mainEditor.getModel();
-      monaco.editor.setModelLanguage(model, filename.endsWith('.mon') ? 'dotmon' : 'plaintext');
+      monaco.editor.setModelLanguage(
+        model,
+        filename.endsWith(".mon") ? "dotmon" : "plaintext",
+      );
 
       // Breadcrumb
-      const parts = filename.split('/');
-      const breadcrumbEl = document.querySelector('.breadcrumb');
+      const parts = filename.split("/");
+      const breadcrumbEl = document.querySelector(".breadcrumb");
       let bcHTML = '<span class="breadcrumb-item">dotmon-project</span>';
       parts.forEach((p, i) => {
-        bcHTML += '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+        bcHTML +=
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
         const isLast = i === parts.length - 1;
-        bcHTML += `<span class="breadcrumb-item${isLast ? ' active' : ''}">${p}</span>`;
+        bcHTML += `<span class="breadcrumb-item${isLast ? " active" : ""}">${p}</span>`;
       });
       breadcrumbEl.innerHTML = bcHTML;
 
       // Title bar
-      document.querySelector('.titlebar-project').textContent = parts[parts.length - 1];
+      document.querySelector(".titlebar-project").textContent =
+        parts[parts.length - 1];
 
       // Update status bar language
-      const langEl = document.querySelector('.statusbar-lang');
-      if (filename.endsWith('.mon')) {
-        langEl.innerHTML = '<span class="file-icon mon-icon" style="font-size:9px;width:14px;height:14px;line-height:14px;">M</span> dotmon';
+      const langEl = document.querySelector(".statusbar-lang");
+      if (filename.endsWith(".mon")) {
+        langEl.innerHTML =
+          '<span class="file-icon mon-icon" style="font-size:9px;width:14px;height:14px;line-height:14px;">M</span> dotmon';
       } else {
-        langEl.textContent = filename.split('.').pop();
+        langEl.textContent = filename.split(".").pop();
       }
 
       // Restore compiled result if exists
       if (compiledResults[filename]) {
-        cEditor.setValue(compiledResults[filename].cCode || '');
+        cEditor.setValue(compiledResults[filename].cCode || "");
         renderErrors(compiledResults[filename].diagnostics || []);
-        document.getElementById('astContent').textContent = compiledResults[filename].astString || '';
+        document.getElementById("astContent").textContent =
+          compiledResults[filename].astString || "";
         setMonacoMarkers(compiledResults[filename].diagnostics || []);
       } else {
         cEditor.setValue('// Click "Compilar" or press Ctrl+B to compile');
         renderErrors([]);
-        document.getElementById('astContent').textContent = '';
+        document.getElementById("astContent").textContent = "";
       }
     }
 
     // ─── Error Panel ─────────────────────────────────────────
     function renderErrors(diagnostics) {
-      const errorListEl = document.getElementById('errorList');
-      const errors = diagnostics.filter(d => d.severity === 'error');
-      const warnings = diagnostics.filter(d => d.severity === 'warning');
+      const errorListEl = document.getElementById("errorList");
+      const errors = diagnostics.filter((d) => d.severity === "error");
+      const warnings = diagnostics.filter((d) => d.severity === "warning");
 
       // Summary
-      const summaryEl = document.querySelector('.error-summary');
+      const summaryEl = document.querySelector(".error-summary");
       if (summaryEl) {
         summaryEl.innerHTML = `
           <span class="error-count error-type">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="#f14c4c" stroke="none"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15" stroke="#1e1e1e" stroke-width="2.5"/><line x1="9" y1="9" x2="15" y2="15" stroke="#1e1e1e" stroke-width="2.5"/></svg>
-            ${errors.length} Error${errors.length !== 1 ? 's' : ''}
+            ${errors.length} Error${errors.length !== 1 ? "s" : ""}
           </span>
           <span class="error-count warning-type">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="#cca700" stroke="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" stroke="#1e1e1e" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="#1e1e1e" stroke-width="2"/></svg>
-            ${warnings.length} Warning${warnings.length !== 1 ? 's' : ''}
+            ${warnings.length} Warning${warnings.length !== 1 ? "s" : ""}
           </span>`;
       }
 
-      let html = '';
+      let html = "";
       for (const d of diagnostics) {
-        const isErr = d.severity === 'error';
-        const color = isErr ? '#f14c4c' : '#cca700';
+        const isErr = d.severity === "error";
+        const color = isErr ? "#f14c4c" : "#cca700";
         const icon = isErr
           ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" stroke="none"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15" stroke="#1e1e1e" stroke-width="2.5"/><line x1="9" y1="9" x2="15" y2="15" stroke="#1e1e1e" stroke-width="2.5"/></svg>`
           : `<svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" stroke="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" stroke="#1e1e1e" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="#1e1e1e" stroke-width="2"/></svg>`;
@@ -603,11 +739,13 @@ Finish
             </div>
           </div>`;
       }
-      errorListEl.innerHTML = html || '<div style="padding:20px;color:#858585;text-align:center">No diagnostics</div>';
+      errorListEl.innerHTML =
+        html ||
+        '<div style="padding:20px;color:#858585;text-align:center">No diagnostics</div>';
 
       // Click to navigate
-      errorListEl.querySelectorAll('.error-item').forEach(el => {
-        el.addEventListener('click', () => {
+      errorListEl.querySelectorAll(".error-item").forEach((el) => {
+        el.addEventListener("click", () => {
           const line = parseInt(el.dataset.line);
           const col = parseInt(el.dataset.col) || 1;
           mainEditor.revealLineInCenter(line);
@@ -618,19 +756,19 @@ Finish
     }
 
     // ─── Tab Management ──────────────────────────────────────
-    const tabList = document.querySelector('.tab-list');
+    const tabList = document.querySelector(".tab-list");
 
     function getOpenTabs() {
-      return [...tabList.querySelectorAll('.tab')].map(t => t.dataset.file);
+      return [...tabList.querySelectorAll(".tab")].map((t) => t.dataset.file);
     }
 
     function createTab(filename) {
       const existing = tabList.querySelector(`.tab[data-file="${filename}"]`);
       if (existing) return existing;
-      const displayName = filename.split('/').pop();
-      const isMon = filename.endsWith('.mon');
-      const tab = document.createElement('div');
-      tab.className = 'tab';
+      const displayName = filename.split("/").pop();
+      const isMon = filename.endsWith(".mon");
+      const tab = document.createElement("div");
+      tab.className = "tab";
       tab.dataset.file = filename;
       tab.innerHTML = `
         ${isMon ? '<span class="tab-icon mon-icon">M</span>' : '<span class="tab-icon c-icon">C</span>'}
@@ -641,44 +779,46 @@ Finish
     }
 
     function activateTab(filename) {
-      tabList.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tabList
+        .querySelectorAll(".tab")
+        .forEach((t) => t.classList.remove("active"));
       const tab = createTab(filename);
-      tab.classList.add('active');
+      tab.classList.add("active");
       renderEditor(filename);
     }
 
     function markTabModified(filename, modified) {
       const tab = tabList.querySelector(`.tab[data-file="${filename}"]`);
       if (!tab) return;
-      const nameEl = tab.querySelector('.tab-name');
-      const base = filename.split('/').pop();
-      nameEl.textContent = modified ? base + ' \u25CF' : base;
+      const nameEl = tab.querySelector(".tab-name");
+      const base = filename.split("/").pop();
+      nameEl.textContent = modified ? base + " \u25CF" : base;
     }
 
-    tabList.addEventListener('click', (e) => {
-      if (e.target.closest('.tab-close')) {
-        const tab = e.target.closest('.tab');
-        const tabs = tabList.querySelectorAll('.tab');
+    tabList.addEventListener("click", (e) => {
+      if (e.target.closest(".tab-close")) {
+        const tab = e.target.closest(".tab");
+        const tabs = tabList.querySelectorAll(".tab");
         if (tabs.length <= 1) return;
-        const wasActive = tab.classList.contains('active');
+        const wasActive = tab.classList.contains("active");
         tab.remove();
         if (wasActive) {
-          const first = tabList.querySelector('.tab');
+          const first = tabList.querySelector(".tab");
           if (first) activateTab(first.dataset.file);
         }
         return;
       }
-      const tab = e.target.closest('.tab');
+      const tab = e.target.closest(".tab");
       if (tab) activateTab(tab.dataset.file);
     });
 
     // ─── File Tree ───────────────────────────────────────────
-    const fileTree = document.getElementById('fileTree');
+    const fileTree = document.getElementById("fileTree");
 
     function buildFileTree() {
       const tree = {};
       for (const path of Object.keys(fileSystem)) {
-        const parts = path.split('/');
+        const parts = path.split("/");
         let node = tree;
         for (let i = 0; i < parts.length - 1; i++) {
           if (!node[parts[i]]) node[parts[i]] = {};
@@ -689,8 +829,10 @@ Finish
       // Also add generated files from compilation
       for (const [file, result] of Object.entries(compiledResults)) {
         if (result && result.cCode) {
-          const cName = file.replace('src/', 'generated/').replace('.mon', '.c');
-          const parts = cName.split('/');
+          const cName = file
+            .replace("src/", "generated/")
+            .replace(".mon", ".c");
+          const parts = cName.split("/");
           let node = tree;
           for (let i = 0; i < parts.length - 1; i++) {
             if (!node[parts[i]]) node[parts[i]] = {};
@@ -699,20 +841,34 @@ Finish
           node[parts[parts.length - 1]] = null;
         }
       }
+      // Also add empty folders
+      for (const folderPath of emptyFolders) {
+        const parts = folderPath.split("/");
+        let node = tree;
+        for (const part of parts) {
+          if (!node[part]) node[part] = {};
+          node = node[part];
+        }
+      }
       return tree;
     }
 
     function renderFileTree() {
       const tree = buildFileTree();
-      let html = '';
+      let html = "";
 
       function renderNode(name, value, path, depth) {
-        const fullPath = path ? path + '/' + name : name;
-        if (value !== null && typeof value === 'object') {
+        const fullPath = path ? path + "/" + name : name;
+        if (value !== null && typeof value === "object") {
           // folder
-          const isOpen = name === 'src' || name === 'generated';
-          const folderColor = name === 'src' ? '#dcb67a' : name === 'generated' ? '#8a8a5c' : '#6a9fb5';
-          html += `<div class="tree-item tree-folder${isOpen ? ' open' : ''}" data-folder="${fullPath}">`;
+          const isOpen = name === "src" || name === "generated";
+          const folderColor =
+            name === "src"
+              ? "#dcb67a"
+              : name === "generated"
+                ? "#8a8a5c"
+                : "#6a9fb5";
+          html += `<div class="tree-item tree-folder${isOpen ? " open" : ""}" data-folder="${fullPath}">`;
           html += `<div class="tree-item-row" style="padding-left:${12 + depth * 20}px">`;
           html += `<svg class="tree-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
           html += `<svg class="tree-icon folder-icon" width="15" height="15" viewBox="0 0 24 24" fill="${folderColor}" stroke="none"><path d="M2 6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></svg>`;
@@ -726,40 +882,41 @@ Finish
           for (const [childName, childVal] of entries) {
             renderNode(childName, childVal, fullPath, depth + 1);
           }
-          html += '</div></div>';
+          html += "</div></div>";
         } else {
           // file
-          const isMon = name.endsWith('.mon');
-          const isC = name.endsWith('.c');
+          const isMon = name.endsWith(".mon");
+          const isC = name.endsWith(".c");
           const isActive = fullPath === currentFile;
-          html += `<div class="tree-item tree-file${isActive ? ' active' : ''}" data-file="${fullPath}">`;
+          html += `<div class="tree-item tree-file${isActive ? " active" : ""}" data-file="${fullPath}">`;
           html += `<div class="tree-item-row" style="padding-left:${12 + depth * 20}px">`;
           if (isMon) html += '<span class="file-icon mon-icon">M</span>';
           else if (isC) html += '<span class="file-icon c-icon">C</span>';
-          else html += `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#519aba" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+          else
+            html += `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#519aba" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
           html += `<span class="tree-label">${name}</span></div></div>`;
         }
       }
 
       for (const [name, val] of Object.entries(buildFileTree())) {
-        renderNode(name, val, '', 0);
+        renderNode(name, val, "", 0);
       }
       fileTree.innerHTML = html;
     }
 
     renderFileTree();
 
-    fileTree.addEventListener('click', (e) => {
-      const row = e.target.closest('.tree-item-row');
+    fileTree.addEventListener("click", (e) => {
+      const row = e.target.closest(".tree-item-row");
       if (!row) return;
       const item = row.parentElement;
 
-      if (item.classList.contains('tree-folder')) {
-        item.classList.toggle('open');
+      if (item.classList.contains("tree-folder")) {
+        item.classList.toggle("open");
         return;
       }
 
-      if (item.classList.contains('tree-file')) {
+      if (item.classList.contains("tree-file")) {
         const filename = item.dataset.file;
         if (fileSystem[filename] !== undefined) {
           activateTab(filename);
@@ -769,82 +926,176 @@ Finish
     });
 
     function updateFileTreeActive(filename) {
-      fileTree.querySelectorAll('.tree-file').forEach(f => f.classList.remove('active'));
-      const target = fileTree.querySelector(`.tree-file[data-file="${filename}"]`);
-      if (target) target.classList.add('active');
+      fileTree
+        .querySelectorAll(".tree-file")
+        .forEach((f) => f.classList.remove("active"));
+      const target = fileTree.querySelector(
+        `.tree-file[data-file="${filename}"]`,
+      );
+      if (target) target.classList.add("active");
     }
 
     // ─── New File / Folder ─────────────────────────────────
-    const newFileBtn = document.querySelector('.sidebar-action-btn[title="Novo arquivo .mon"]');
-    const newFolderBtn = document.querySelector('.sidebar-action-btn[title="Nova pasta"]');
-    const importBtn = document.querySelector('.sidebar-action-btn[title="Importar .mon"]');
+    const newFileBtn = document.querySelector(
+      '.sidebar-action-btn[title="Novo arquivo .mon"]',
+    );
+    const newFolderBtn = document.querySelector(
+      '.sidebar-action-btn[title="Nova pasta"]',
+    );
+    const importBtn = document.querySelector(
+      '.sidebar-action-btn[title="Importar .mon"]',
+    );
+
+    // Helper to determine parent folder from a context target element
+    function getTargetFolder(el) {
+      if (!el) return "src";
+      const folder = el.closest(".tree-folder");
+      if (folder) return folder.dataset.folder || "src";
+      // If it's a file, use its parent folder
+      const file = el.dataset && el.dataset.file;
+      if (file && file.includes("/"))
+        return file.substring(0, file.lastIndexOf("/"));
+      return "src";
+    }
+
+    function createNewFile(parentFolder) {
+      const name = prompt("Nome do arquivo (ex: meuarquivo.mon):");
+      if (!name) return;
+      const safeName = name.replace(/[^a-zA-Z0-9._\-]/g, "");
+      if (!safeName) return;
+      const finalName = safeName.endsWith(".mon")
+        ? safeName
+        : safeName + ".mon";
+      const path = `${parentFolder}/${finalName}`;
+      if (fileSystem[path]) {
+        alert("Arquivo ja existe!");
+        return;
+      }
+      const newContent = `// ${finalName}\n\nStart\n{\n    \n}\nFinish\n`;
+      fileSystem[path] = newContent;
+      // Remove parent from emptyFolders since it now has content
+      emptyFolders.delete(parentFolder);
+      saveFS();
+      if (backendAvailable) api.createFile(path, newContent).catch(() => {});
+      renderFileTree();
+      activateTab(path);
+    }
+
+    function createNewFolder(parentFolder) {
+      const name = prompt("Nome da pasta:");
+      if (!name) return;
+      const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, "");
+      if (!safeName) return;
+      const folderPath = parentFolder
+        ? `${parentFolder}/${safeName}`
+        : safeName;
+      // Check if folder already exists (either has files or is tracked as empty)
+      const tree = buildFileTree();
+      const parts = folderPath.split("/");
+      let node = tree;
+      let exists = true;
+      for (const part of parts) {
+        if (node && typeof node === "object" && node[part] !== undefined) {
+          node = node[part];
+        } else {
+          exists = false;
+          break;
+        }
+      }
+      if (exists) {
+        alert("Pasta ja existe!");
+        return;
+      }
+      emptyFolders.add(folderPath);
+      saveFS();
+      if (backendAvailable) api.createFolder(folderPath).catch(() => {});
+      renderFileTree();
+    }
 
     if (newFileBtn) {
-      newFileBtn.addEventListener('click', () => {
-        const name = prompt('Nome do arquivo (ex: meuarquivo.mon):');
-        if (!name) return;
-        const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '');
-        const path = `src/${safeName.endsWith('.mon') ? safeName : safeName + '.mon'}`;
-        if (fileSystem[path]) { alert('Arquivo ja existe!'); return; }
-        const newContent = `// ${safeName}\n\nStart\n{\n    \n}\nFinish\n`;
-        fileSystem[path] = newContent;
-        saveFS();
-        if (backendAvailable) api.createFile(path, newContent).catch(() => {});
-        renderFileTree();
-        activateTab(path);
-      });
+      newFileBtn.addEventListener("click", () => createNewFile("src"));
+    }
+
+    if (newFolderBtn) {
+      newFolderBtn.addEventListener("click", () => createNewFolder("src"));
     }
 
     if (importBtn) {
-      importBtn.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.mon';
+      importBtn.addEventListener("click", () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".mon";
+        input.multiple = true;
         input.onchange = (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            const path = `src/${file.name}`;
-            fileSystem[path] = ev.target.result;
-            saveFS();
-            if (backendAvailable) api.saveFile(path, ev.target.result).catch(() => {});
-            renderFileTree();
-            activateTab(path);
-          };
-          reader.readAsText(file);
+          const files = Array.from(e.target.files);
+          if (!files.length) return;
+          files.forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const path = `src/${file.name}`;
+              const content = ev.target.result;
+              if (fileSystem[path]) {
+                if (!confirm(`"${file.name}" ja existe. Deseja substituir?`))
+                  return;
+              }
+              fileSystem[path] = content;
+              saveFS();
+              if (backendAvailable) {
+                if (fileSystem[path]) {
+                  api.saveFile(path, content).catch(() => {});
+                } else {
+                  api.createFile(path, content).catch(() => {});
+                }
+              }
+              renderFileTree();
+              activateTab(path);
+            };
+            reader.readAsText(file);
+          });
         };
         input.click();
       });
     }
 
     // ─── Context Menu ────────────────────────────────────────
-    const contextMenu = document.getElementById('contextMenu');
+    const contextMenu = document.getElementById("contextMenu");
+    const folderContextMenu = document.getElementById("folderContextMenu");
     let contextTarget = null;
 
-    fileTree.addEventListener('contextmenu', (e) => {
+    function hideAllContextMenus() {
+      contextMenu.classList.remove("visible");
+      folderContextMenu.classList.remove("visible");
+    }
+
+    fileTree.addEventListener("contextmenu", (e) => {
       e.preventDefault();
-      const row = e.target.closest('.tree-item-row');
+      const row = e.target.closest(".tree-item-row");
       if (!row) return;
       contextTarget = row.parentElement;
-      contextMenu.style.top = `${e.clientY}px`;
-      contextMenu.style.left = `${e.clientX}px`;
-      contextMenu.classList.add('visible');
+      hideAllContextMenus();
+
+      const isFolder = contextTarget.classList.contains("tree-folder");
+      const menu = isFolder ? folderContextMenu : contextMenu;
+      menu.style.top = `${e.clientY}px`;
+      menu.style.left = `${e.clientX}px`;
+      menu.classList.add("visible");
     });
 
-    document.addEventListener('click', () => contextMenu.classList.remove('visible'));
+    document.addEventListener("click", hideAllContextMenus);
 
-    contextMenu.addEventListener('click', (e) => {
-      const item = e.target.closest('.context-menu-item');
+    // File context menu handler
+    contextMenu.addEventListener("click", (e) => {
+      const item = e.target.closest(".context-menu-item");
       if (!item || !contextTarget) return;
       const action = item.dataset.action;
       const filename = contextTarget.dataset.file;
+      const folderTarget = getTargetFolder(contextTarget);
 
-      if (action === 'compile' && filename) {
+      if (action === "compile" && filename) {
         activateTab(filename);
         doCompile(filename);
       }
-      if (action === 'delete' && filename && fileSystem[filename]) {
+      if (action === "delete" && filename && fileSystem[filename]) {
         if (confirm(`Excluir ${filename}?`)) {
           delete fileSystem[filename];
           saveFS();
@@ -852,15 +1103,15 @@ Finish
           const tab = tabList.querySelector(`.tab[data-file="${filename}"]`);
           if (tab) tab.remove();
           renderFileTree();
-          const first = tabList.querySelector('.tab');
+          const first = tabList.querySelector(".tab");
           if (first) activateTab(first.dataset.file);
         }
       }
-      if (action === 'rename' && filename && fileSystem[filename]) {
-        const newName = prompt('Novo nome:', filename.split('/').pop());
+      if (action === "rename" && filename && fileSystem[filename]) {
+        const newName = prompt("Novo nome:", filename.split("/").pop());
         if (!newName) return;
-        const dir = filename.substring(0, filename.lastIndexOf('/'));
-        const newPath = dir + '/' + newName;
+        const dir = filename.substring(0, filename.lastIndexOf("/"));
+        const newPath = dir + "/" + newName;
         fileSystem[newPath] = fileSystem[filename];
         delete fileSystem[filename];
         saveFS();
@@ -868,23 +1119,129 @@ Finish
         renderFileTree();
         activateTab(newPath);
       }
-      if (action === 'new-file') {
-        newFileBtn && newFileBtn.click();
+      if (action === "new-file") {
+        createNewFile(folderTarget);
       }
-      contextMenu.classList.remove('visible');
+      if (action === "new-folder") {
+        createNewFolder(folderTarget);
+      }
+      hideAllContextMenus();
+    });
+
+    // Folder context menu handler
+    folderContextMenu.addEventListener("click", (e) => {
+      const item = e.target.closest(".context-menu-item");
+      if (!item || !contextTarget) return;
+      const action = item.dataset.action;
+      const folderPath = contextTarget.dataset.folder;
+
+      if (action === "new-file" && folderPath) {
+        createNewFile(folderPath);
+      }
+      if (action === "new-folder" && folderPath) {
+        createNewFolder(folderPath);
+      }
+      if (action === "rename-folder" && folderPath) {
+        const oldName = folderPath.split("/").pop();
+        const newName = prompt("Novo nome da pasta:", oldName);
+        if (!newName || newName === oldName) {
+          hideAllContextMenus();
+          return;
+        }
+        const safeName = newName.replace(/[^a-zA-Z0-9_\-]/g, "");
+        if (!safeName) {
+          hideAllContextMenus();
+          return;
+        }
+        const parentDir = folderPath.includes("/")
+          ? folderPath.substring(0, folderPath.lastIndexOf("/"))
+          : "";
+        const newFolderPath = parentDir ? `${parentDir}/${safeName}` : safeName;
+        // Rename all files under this folder
+        const keysToRename = Object.keys(fileSystem).filter(
+          (k) => k === folderPath + "/" || k.startsWith(folderPath + "/"),
+        );
+        for (const key of keysToRename) {
+          const newKey = newFolderPath + key.substring(folderPath.length);
+          fileSystem[newKey] = fileSystem[key];
+          delete fileSystem[key];
+          if (backendAvailable) api.renameFile(key, newKey).catch(() => {});
+          // Update open tabs
+          const tab = tabList.querySelector(`.tab[data-file="${key}"]`);
+          if (tab) {
+            tab.dataset.file = newKey;
+            tab.querySelector(".tab-name").textContent = newKey
+              .split("/")
+              .pop();
+          }
+        }
+        // Update empty folders set
+        for (const f of [...emptyFolders]) {
+          if (f === folderPath || f.startsWith(folderPath + "/")) {
+            emptyFolders.delete(f);
+            emptyFolders.add(newFolderPath + f.substring(folderPath.length));
+          }
+        }
+        if (currentFile && currentFile.startsWith(folderPath + "/")) {
+          currentFile =
+            newFolderPath + currentFile.substring(folderPath.length);
+        }
+        saveFS();
+        renderFileTree();
+      }
+      if (action === "delete-folder" && folderPath) {
+        // Gather all files inside this folder
+        const filesInFolder = Object.keys(fileSystem).filter((k) =>
+          k.startsWith(folderPath + "/"),
+        );
+        const count = filesInFolder.length;
+        const msg =
+          count > 0
+            ? `Excluir pasta "${folderPath}" e seus ${count} arquivo(s)?`
+            : `Excluir pasta vazia "${folderPath}"?`;
+        if (!confirm(msg)) {
+          hideAllContextMenus();
+          return;
+        }
+        // Delete all files inside
+        for (const key of filesInFolder) {
+          delete fileSystem[key];
+          const tab = tabList.querySelector(`.tab[data-file="${key}"]`);
+          if (tab) tab.remove();
+        }
+        // Remove from emptyFolders
+        for (const f of [...emptyFolders]) {
+          if (f === folderPath || f.startsWith(folderPath + "/")) {
+            emptyFolders.delete(f);
+          }
+        }
+        saveFS();
+        if (backendAvailable) api.deleteFolder(folderPath).catch(() => {});
+        renderFileTree();
+        // If current file was in deleted folder, switch to first available tab
+        if (currentFile && currentFile.startsWith(folderPath + "/")) {
+          const first = tabList.querySelector(".tab");
+          if (first) activateTab(first.dataset.file);
+        }
+      }
+      hideAllContextMenus();
     });
 
     // ─── Compile Buttons ─────────────────────────────────────
     // Title bar compile button
-    const compileBtns = document.querySelectorAll('.titlebar-action-btn[title="Compilar"]');
-    compileBtns.forEach(btn => {
-      btn.addEventListener('click', () => doCompile(currentFile));
+    const compileBtns = document.querySelectorAll(
+      '.titlebar-action-btn[title="Compilar"]',
+    );
+    compileBtns.forEach((btn) => {
+      btn.addEventListener("click", () => doCompile(currentFile));
     });
 
     // Title bar generate C button
-    const genCBtns = document.querySelectorAll('.titlebar-action-btn[title="Gerar C"]');
-    genCBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+    const genCBtns = document.querySelectorAll(
+      '.titlebar-action-btn[title="Gerar C"]',
+    );
+    genCBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
         doCompile(currentFile);
         // Switch to C output panel
         panelTabBar.querySelector('[data-panel="c-output"]').click();
@@ -892,121 +1249,139 @@ Finish
     });
 
     // Title bar errors button
-    const errBtns = document.querySelectorAll('.titlebar-action-btn[title="Erros"]');
-    errBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+    const errBtns = document.querySelectorAll(
+      '.titlebar-action-btn[title="Erros"]',
+    );
+    errBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
         panelTabBar.querySelector('[data-panel="errors"]').click();
       });
     });
 
     // Export C button
-    const exportBtns = document.querySelectorAll('.panel-action-btn[title="Exportar .c"]');
-    exportBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+    const exportBtns = document.querySelectorAll(
+      '.panel-action-btn[title="Exportar .c"]',
+    );
+    exportBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
         const cCode = cEditor.getValue();
-        if (!cCode || cCode.startsWith('//')) return;
-        const blob = new Blob([cCode], { type: 'text/plain' });
+        if (!cCode || cCode.startsWith("//")) return;
+        const blob = new Blob([cCode], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = currentFile.split('/').pop().replace('.mon', '.c');
+        a.download = currentFile.split("/").pop().replace(".mon", ".c");
         a.click();
         URL.revokeObjectURL(url);
       });
     });
 
     // Copy C button
-    const copyBtns = document.querySelectorAll('.panel-action-btn[title="Copiar"]');
-    copyBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+    const copyBtns = document.querySelectorAll(
+      '.panel-action-btn[title="Copiar"]',
+    );
+    copyBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
         navigator.clipboard.writeText(cEditor.getValue());
       });
     });
 
     // Regenerate button
-    const regenBtns = document.querySelectorAll('.panel-action-btn[title="Regenerar"]');
-    regenBtns.forEach(btn => {
-      btn.addEventListener('click', () => doCompile(currentFile));
+    const regenBtns = document.querySelectorAll(
+      '.panel-action-btn[title="Regenerar"]',
+    );
+    regenBtns.forEach((btn) => {
+      btn.addEventListener("click", () => doCompile(currentFile));
     });
 
     // Keyboard shortcut: Ctrl+B to compile
-    document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
         e.preventDefault();
         doCompile(currentFile);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         fileSystem[currentFile] = mainEditor.getValue();
         saveFS();
         saveFileToBackend(currentFile);
         markTabModified(currentFile, false);
-        appendTerminalLine('terminal-success', `[info] Arquivo salvo: ${currentFile}`);
+        appendTerminalLine(
+          "terminal-success",
+          `[info] Arquivo salvo: ${currentFile}`,
+        );
       }
     });
 
     // ─── Right Panel Tabs ────────────────────────────────────
-    const panelTabBar = document.querySelector('.panel-tab-bar');
+    const panelTabBar = document.querySelector(".panel-tab-bar");
     const panelContents = {
-      'c-output': document.getElementById('panelCOutput'),
-      'errors': document.getElementById('panelErrors'),
-      'ast': document.getElementById('panelAst')
+      "c-output": document.getElementById("panelCOutput"),
+      errors: document.getElementById("panelErrors"),
+      ast: document.getElementById("panelAst"),
     };
 
-    panelTabBar.addEventListener('click', (e) => {
-      const tab = e.target.closest('.panel-tab');
+    panelTabBar.addEventListener("click", (e) => {
+      const tab = e.target.closest(".panel-tab");
       if (!tab) return;
-      panelTabBar.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
+      panelTabBar
+        .querySelectorAll(".panel-tab")
+        .forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
       const panelId = tab.dataset.panel;
-      Object.values(panelContents).forEach(p => p.classList.remove('active'));
-      if (panelContents[panelId]) panelContents[panelId].classList.add('active');
+      Object.values(panelContents).forEach((p) => p.classList.remove("active"));
+      if (panelContents[panelId])
+        panelContents[panelId].classList.add("active");
       // Re-layout Monaco if switching to C panel
-      if (panelId === 'c-output') setTimeout(() => cEditor.layout(), 50);
+      if (panelId === "c-output") setTimeout(() => cEditor.layout(), 50);
     });
 
     // ─── Bottom Panel Tabs ────────────────────────────────────
-    const bottomTabBar = document.querySelector('.bottom-tabs');
+    const bottomTabBar = document.querySelector(".bottom-tabs");
     const bottomPanes = {
-      'terminal': document.getElementById('bottomTerminal'),
-      'output': document.getElementById('bottomOutput'),
-      'build': document.getElementById('bottomBuild'),
-      'debug-output': document.getElementById('bottomDebugOutput')
+      terminal: document.getElementById("bottomTerminal"),
+      output: document.getElementById("bottomOutput"),
+      build: document.getElementById("bottomBuild"),
+      "debug-output": document.getElementById("bottomDebugOutput"),
     };
 
-    bottomTabBar.addEventListener('click', (e) => {
-      const tab = e.target.closest('.bottom-tab');
+    bottomTabBar.addEventListener("click", (e) => {
+      const tab = e.target.closest(".bottom-tab");
       if (!tab) return;
-      bottomTabBar.querySelectorAll('.bottom-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
+      bottomTabBar
+        .querySelectorAll(".bottom-tab")
+        .forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
       const paneId = tab.dataset.bottom;
-      Object.values(bottomPanes).forEach(p => p.classList.remove('active'));
-      if (bottomPanes[paneId]) bottomPanes[paneId].classList.add('active');
-      if (paneId === 'terminal') terminalInput.focus();
+      Object.values(bottomPanes).forEach((p) => p.classList.remove("active"));
+      if (bottomPanes[paneId]) bottomPanes[paneId].classList.add("active");
+      if (paneId === "terminal") terminalInput.focus();
     });
 
     // ─── Bottom Panel Toggle ──────────────────────────────────
-    const bottomPanel = document.getElementById('bottomPanel');
-    const bottomToggle = document.getElementById('bottomToggle');
-    bottomToggle.addEventListener('click', () => bottomPanel.classList.toggle('collapsed'));
+    const bottomPanel = document.getElementById("bottomPanel");
+    const bottomToggle = document.getElementById("bottomToggle");
+    bottomToggle.addEventListener("click", () =>
+      bottomPanel.classList.toggle("collapsed"),
+    );
 
     // ─── Terminal ────────────────────────────────────────────
-    const terminalContent = document.getElementById('terminalContent');
-    const terminalInput = document.getElementById('terminalInput');
+    const terminalContent = document.getElementById("terminalContent");
+    const terminalInput = document.getElementById("terminalInput");
 
     function appendTerminalLine(cls, text) {
-      const div = document.createElement('div');
+      const div = document.createElement("div");
       div.className = `terminal-line ${cls}`;
       div.textContent = text;
-      const inputLine = terminalContent.querySelector('.terminal-input-line');
+      const inputLine = terminalContent.querySelector(".terminal-input-line");
       terminalContent.insertBefore(div, inputLine);
       terminalContent.scrollTop = terminalContent.scrollHeight;
     }
 
     function appendTerminalBlock(lines) {
-      const inputLine = terminalContent.querySelector('.terminal-input-line');
+      const inputLine = terminalContent.querySelector(".terminal-input-line");
       for (const l of lines) {
-        const div = document.createElement('div');
+        const div = document.createElement("div");
         div.className = `terminal-line ${l.cls}`;
         div.textContent = l.text;
         terminalContent.insertBefore(div, inputLine);
@@ -1015,10 +1390,10 @@ Finish
     }
 
     function appendTerminalPrompt(cmd) {
-      const div = document.createElement('div');
-      div.className = 'terminal-line';
+      const div = document.createElement("div");
+      div.className = "terminal-line";
       div.innerHTML = `<span class="terminal-prompt">dotmon@project</span> <span class="terminal-path">~/dotmon-project</span> <span class="terminal-cmd">$</span> ${escHTML(cmd)}`;
-      const inputLine = terminalContent.querySelector('.terminal-input-line');
+      const inputLine = terminalContent.querySelector(".terminal-input-line");
       terminalContent.insertBefore(div, inputLine);
     }
 
@@ -1028,23 +1403,31 @@ Finish
 
       function connectTerminalWs() {
         if (!backendAvailable) return;
-        const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProto}//${window.location.host}/ws/terminal`;
         try {
           terminalWs = new WebSocket(wsUrl);
           terminalWs.onopen = () => {
-            appendTerminalLine('terminal-success', '[info] Terminal conectado ao backend');
+            appendTerminalLine(
+              "terminal-success",
+              "[info] Terminal conectado ao backend",
+            );
           };
           terminalWs.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.lines) {
               for (const l of data.lines) {
-                if (l.text === '__CLEAR__') {
-                  const lines = terminalContent.querySelectorAll('.terminal-line:not(.terminal-input-line)');
-                  lines.forEach(el => { if (!el.classList.contains('terminal-input-line')) el.remove(); });
-                } else if (l.text.startsWith('__COMPILE__:')) {
+                if (l.text === "__CLEAR__") {
+                  const lines = terminalContent.querySelectorAll(
+                    ".terminal-line:not(.terminal-input-line)",
+                  );
+                  lines.forEach((el) => {
+                    if (!el.classList.contains("terminal-input-line"))
+                      el.remove();
+                  });
+                } else if (l.text.startsWith("__COMPILE__:")) {
                   // Compilation handled client-side
-                  const compileCmd = l.text.replace('__COMPILE__:', '');
+                  const compileCmd = l.text.replace("__COMPILE__:", "");
                   handleCompileCommand(compileCmd);
                 } else {
                   appendTerminalLine(l.cls, l.text);
@@ -1054,25 +1437,35 @@ Finish
           };
           terminalWs.onclose = () => {
             terminalWs = null;
-            appendTerminalLine('terminal-muted', '[info] Terminal desconectado');
+            appendTerminalLine(
+              "terminal-muted",
+              "[info] Terminal desconectado",
+            );
           };
-          terminalWs.onerror = () => { terminalWs = null; };
-        } catch (_) { terminalWs = null; }
+          terminalWs.onerror = () => {
+            terminalWs = null;
+          };
+        } catch (_) {
+          terminalWs = null;
+        }
       }
 
       function handleCompileCommand(cmd) {
-        const arg = cmd.replace('dotmon compile', '').trim();
-        if (arg === 'all') {
+        const arg = cmd.replace("dotmon compile", "").trim();
+        if (arg === "all") {
           for (const f of Object.keys(fileSystem)) {
-            if (f.endsWith('.mon')) doCompile(f);
+            if (f.endsWith(".mon")) doCompile(f);
           }
           renderFileTree();
           return;
         }
         let target = arg;
-        if (!fileSystem[target]) target = 'src/' + arg;
+        if (!fileSystem[target]) target = "src/" + arg;
         if (!fileSystem[target]) {
-          appendTerminalLine('terminal-error', `[error] File not found: ${arg}`);
+          appendTerminalLine(
+            "terminal-error",
+            `[error] File not found: ${arg}`,
+          );
           return;
         }
         activateTab(target);
@@ -1083,23 +1476,27 @@ Finish
       // Connect WebSocket after short delay
       setTimeout(connectTerminalWs, 500);
 
-      terminalInput.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
+      terminalInput.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
         const cmd = terminalInput.value.trim();
-        terminalInput.value = '';
+        terminalInput.value = "";
         if (!cmd) return;
 
         appendTerminalPrompt(cmd);
 
         // Client-side clear (always local)
-        if (cmd === 'clear') {
-          const lines = terminalContent.querySelectorAll('.terminal-line:not(.terminal-input-line)');
-          lines.forEach(l => { if (!l.classList.contains('terminal-input-line')) l.remove(); });
+        if (cmd === "clear") {
+          const lines = terminalContent.querySelectorAll(
+            ".terminal-line:not(.terminal-input-line)",
+          );
+          lines.forEach((l) => {
+            if (!l.classList.contains("terminal-input-line")) l.remove();
+          });
           return;
         }
 
         // Compilation always runs client-side (compiler is in JS)
-        if (cmd.startsWith('dotmon compile')) {
+        if (cmd.startsWith("dotmon compile")) {
           handleCompileCommand(cmd);
           return;
         }
@@ -1111,174 +1508,212 @@ Finish
         }
 
         // Local fallback for common commands
-        if (cmd === 'help') {
-          appendTerminalLine('terminal-info', 'Commands:');
-          appendTerminalLine('terminal-info', '  dotmon compile [file]  — Compile a .mon file');
-          appendTerminalLine('terminal-info', '  dotmon compile all     — Compile all .mon files');
-          appendTerminalLine('terminal-info', '  ls                     — List files');
-          appendTerminalLine('terminal-info', '  cat <file>             — Show file content (backend)');
-          appendTerminalLine('terminal-info', '  clear                  — Clear terminal');
-          appendTerminalLine('terminal-info', '  help                   — Show this help');
+        if (cmd === "help") {
+          appendTerminalLine("terminal-info", "Commands:");
+          appendTerminalLine(
+            "terminal-info",
+            "  dotmon compile [file]  — Compile a .mon file",
+          );
+          appendTerminalLine(
+            "terminal-info",
+            "  dotmon compile all     — Compile all .mon files",
+          );
+          appendTerminalLine(
+            "terminal-info",
+            "  ls                     — List files",
+          );
+          appendTerminalLine(
+            "terminal-info",
+            "  cat <file>             — Show file content (backend)",
+          );
+          appendTerminalLine(
+            "terminal-info",
+            "  clear                  — Clear terminal",
+          );
+          appendTerminalLine(
+            "terminal-info",
+            "  help                   — Show this help",
+          );
           return;
         }
 
-        if (cmd === 'ls') {
+        if (cmd === "ls") {
           for (const f of Object.keys(fileSystem)) {
-            appendTerminalLine('terminal-info', '  ' + f);
+            appendTerminalLine("terminal-info", "  " + f);
           }
           return;
         }
 
-        appendTerminalLine('terminal-error', `Command not found: ${cmd}. Type 'help' for available commands.`);
+        appendTerminalLine(
+          "terminal-error",
+          `Command not found: ${cmd}. Type 'help' for available commands.`,
+        );
       });
     }
 
     // ─── Activity Bar ────────────────────────────────────────
-    const activityBtns = document.querySelectorAll('.activity-btn[data-panel]');
-    const sidebar = document.getElementById('sidebar');
+    const activityBtns = document.querySelectorAll(".activity-btn[data-panel]");
+    const sidebar = document.getElementById("sidebar");
 
-    activityBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const wasActive = btn.classList.contains('active');
+    activityBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const wasActive = btn.classList.contains("active");
         if (wasActive) {
-          sidebar.style.display = sidebar.style.display === 'none' ? '' : 'none';
-          btn.classList.toggle('active');
+          sidebar.style.display =
+            sidebar.style.display === "none" ? "" : "none";
+          btn.classList.toggle("active");
         } else {
-          activityBtns.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          sidebar.style.display = '';
+          activityBtns.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          sidebar.style.display = "";
         }
         // Re-layout Monaco editors after sidebar toggle
-        setTimeout(() => { mainEditor.layout(); cEditor.layout(); }, 100);
+        setTimeout(() => {
+          mainEditor.layout();
+          cEditor.layout();
+        }, 100);
       });
     });
 
     // ─── Resize: Sidebar ─────────────────────────────────────
-    const resizeSidebar = document.getElementById('resizeSidebar');
+    const resizeSidebar = document.getElementById("resizeSidebar");
     let isSidebarResizing = false;
 
-    resizeSidebar.addEventListener('mousedown', (e) => {
+    resizeSidebar.addEventListener("mousedown", (e) => {
       isSidebarResizing = true;
-      resizeSidebar.classList.add('active');
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+      resizeSidebar.classList.add("active");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
       e.preventDefault();
     });
 
     // ─── Resize: Right Panel ─────────────────────────────────
-    const resizePanel = document.getElementById('resizePanel');
-    const rightPanel = document.getElementById('rightPanel');
+    const resizePanel = document.getElementById("resizePanel");
+    const rightPanel = document.getElementById("rightPanel");
     let isPanelResizing = false;
 
-    resizePanel.addEventListener('mousedown', (e) => {
+    resizePanel.addEventListener("mousedown", (e) => {
       isPanelResizing = true;
-      resizePanel.classList.add('active');
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+      resizePanel.classList.add("active");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
       e.preventDefault();
     });
 
     // ─── Resize: Bottom Panel ────────────────────────────────
-    const resizeBottom = document.getElementById('resizeBottom');
+    const resizeBottom = document.getElementById("resizeBottom");
     let isBottomResizing = false;
 
-    resizeBottom.addEventListener('mousedown', (e) => {
+    resizeBottom.addEventListener("mousedown", (e) => {
       isBottomResizing = true;
-      resizeBottom.classList.add('active');
-      document.body.style.cursor = 'row-resize';
-      document.body.style.userSelect = 'none';
+      resizeBottom.classList.add("active");
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
       e.preventDefault();
     });
 
     // ─── Global Mouse Events for Resize ──────────────────────
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener("mousemove", (e) => {
       if (isSidebarResizing) {
         const activityBarWidth = 56;
         const newWidth = e.clientX - activityBarWidth - 16;
-        if (newWidth >= 160 && newWidth <= 500) sidebar.style.width = newWidth + 'px';
+        if (newWidth >= 160 && newWidth <= 500)
+          sidebar.style.width = newWidth + "px";
       }
       if (isPanelResizing) {
-        const wrapperRect = document.querySelector('.editor-panel-wrapper').getBoundingClientRect();
+        const wrapperRect = document
+          .querySelector(".editor-panel-wrapper")
+          .getBoundingClientRect();
         const newWidth = wrapperRect.right - e.clientX;
-        if (newWidth >= 240 && newWidth <= 700) rightPanel.style.width = newWidth + 'px';
+        if (newWidth >= 240 && newWidth <= 700)
+          rightPanel.style.width = newWidth + "px";
       }
       if (isBottomResizing) {
-        const windowRect = document.querySelector('.ide-window').getBoundingClientRect();
+        const windowRect = document
+          .querySelector(".ide-window")
+          .getBoundingClientRect();
         const newHeight = windowRect.bottom - e.clientY - 28;
         if (newHeight >= 80 && newHeight <= 500) {
-          bottomPanel.style.height = newHeight + 'px';
-          bottomPanel.classList.remove('collapsed');
+          bottomPanel.style.height = newHeight + "px";
+          bottomPanel.classList.remove("collapsed");
         }
       }
     });
 
-    document.addEventListener('mouseup', () => {
+    document.addEventListener("mouseup", () => {
       if (isSidebarResizing || isPanelResizing || isBottomResizing) {
         isSidebarResizing = false;
         isPanelResizing = false;
         isBottomResizing = false;
-        resizeSidebar.classList.remove('active');
-        resizePanel.classList.remove('active');
-        resizeBottom.classList.remove('active');
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
+        resizeSidebar.classList.remove("active");
+        resizePanel.classList.remove("active");
+        resizeBottom.classList.remove("active");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
         // Re-layout Monaco editors
-        setTimeout(() => { mainEditor.layout(); cEditor.layout(); }, 50);
+        setTimeout(() => {
+          mainEditor.layout();
+          cEditor.layout();
+        }, 50);
       }
     });
 
     // ─── Status Bar ──────────────────────────────────────────
     function updateStatusCursor(line, col) {
-      const items = document.querySelectorAll('.statusbar-right .statusbar-item');
-      items.forEach(item => {
-        if (item.textContent.startsWith('Ln')) {
+      const items = document.querySelectorAll(
+        ".statusbar-right .statusbar-item",
+      );
+      items.forEach((item) => {
+        if (item.textContent.startsWith("Ln")) {
           item.textContent = `Ln ${line}, Col ${col}`;
         }
       });
     }
 
     function updateStatusErrors(errCount, warnCount) {
-      const el = document.getElementById('statusErrors');
+      const el = document.getElementById("statusErrors");
       if (!el) return;
       el.innerHTML = `
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="${errCount > 0 ? '#f14c4c' : '#858585'}" stroke="none"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15" stroke="#1e1e1e" stroke-width="2.5"/><line x1="9" y1="9" x2="15" y2="15" stroke="#1e1e1e" stroke-width="2.5"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="${errCount > 0 ? "#f14c4c" : "#858585"}" stroke="none"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15" stroke="#1e1e1e" stroke-width="2.5"/><line x1="9" y1="9" x2="15" y2="15" stroke="#1e1e1e" stroke-width="2.5"/></svg>
         ${errCount}
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="${warnCount > 0 ? '#cca700' : '#858585'}" stroke="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" stroke="#1e1e1e" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="#1e1e1e" stroke-width="2"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="${warnCount > 0 ? "#cca700" : "#858585"}" stroke="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" stroke="#1e1e1e" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="#1e1e1e" stroke-width="2"/></svg>
         ${warnCount}`;
     }
 
     function updateErrorBadge(count) {
-      const badge = document.querySelector('.error-badge');
+      const badge = document.querySelector(".error-badge");
       if (badge) {
         badge.textContent = count;
-        badge.style.display = count > 0 ? '' : 'none';
+        badge.style.display = count > 0 ? "" : "none";
       }
     }
 
-    document.getElementById('statusErrors').addEventListener('click', () => {
+    document.getElementById("statusErrors").addEventListener("click", () => {
       panelTabBar.querySelector('[data-panel="errors"]').click();
     });
 
     // ─── Search in Titlebar ──────────────────────────────────
-    const titlebarSearch = document.querySelector('.titlebar-search');
+    const titlebarSearch = document.querySelector(".titlebar-search");
     if (titlebarSearch) {
-      titlebarSearch.addEventListener('click', () => {
+      titlebarSearch.addEventListener("click", () => {
         if (mainEditor) {
-          mainEditor.getAction('actions.find').run();
+          mainEditor.getAction("actions.find").run();
         }
       });
     }
 
     // ─── Window Resize ──────────────────────────────────────
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       mainEditor.layout();
       cEditor.layout();
     });
-
   }); // end require Monaco
 
   // ─── Helper: escape HTML ───────────────────────────────────
   function escHTML(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 });

@@ -237,6 +237,10 @@ class CreateFileRequest(BaseModel):
     content: str = ""
 
 
+class CreateFolderRequest(BaseModel):
+    path: str
+
+
 # ─── REST API: File System ──────────────────────────────────
 
 @app.get("/api/files")
@@ -291,6 +295,37 @@ def create_file_endpoint(body: CreateFileRequest):
     return {"path": body.path, "size": full.stat().st_size}
 
 
+@app.post("/api/folders")
+def create_folder_endpoint(body: CreateFolderRequest):
+    """Create a new empty folder."""
+    if not body.path or not _SAFE_PATH_RE.match(body.path):
+        raise HTTPException(status_code=400, detail="Nome de pasta invalido")
+    resolved = (PROJECT_DIR / body.path).resolve()
+    if not str(resolved).startswith(str(PROJECT_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    if resolved.exists():
+        raise HTTPException(status_code=409, detail="Pasta ja existe")
+    resolved.mkdir(parents=True, exist_ok=True)
+    return {"path": body.path}
+
+
+@app.delete("/api/folders/{folder_path:path}")
+def delete_folder_endpoint(folder_path: str):
+    """Delete a folder and all its contents."""
+    if not folder_path or not _SAFE_PATH_RE.match(folder_path):
+        raise HTTPException(status_code=400, detail="Nome de pasta invalido")
+    resolved = (PROJECT_DIR / folder_path).resolve()
+    if not str(resolved).startswith(str(PROJECT_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    if not resolved.is_dir():
+        raise HTTPException(status_code=404, detail="Pasta nao encontrada")
+    # Prevent deleting the workspace root
+    if resolved == PROJECT_DIR.resolve():
+        raise HTTPException(status_code=403, detail="Nao e possivel excluir a pasta raiz")
+    shutil.rmtree(resolved)
+    return {"deleted": folder_path}
+
+
 @app.delete("/api/files/{file_path:path}")
 def delete_file(file_path: str):
     """Delete a file."""
@@ -333,6 +368,7 @@ def load_project():
     """Load ALL files content at once (for initial IDE load)."""
     _ensure_workspace()
     result = {}
+    folders = []
     for ext in ALLOWED_EXTENSIONS:
         for f in PROJECT_DIR.rglob(f"*{ext}"):
             rel = f.relative_to(PROJECT_DIR).as_posix()
@@ -340,7 +376,11 @@ def load_project():
                 result[rel] = f.read_text(encoding="utf-8")
             except UnicodeDecodeError:
                 continue
-    return {"files": result}
+    # Collect empty directories so the IDE can display them
+    for d in PROJECT_DIR.rglob("*"):
+        if d.is_dir() and not any(d.iterdir()):
+            folders.append(d.relative_to(PROJECT_DIR).as_posix())
+    return {"files": result, "folders": folders}
 
 
 # ─── REST API: Export generated C ───────────────────────────

@@ -4,48 +4,94 @@
 // ============================================================
 
 const DotmonCompiler = (() => {
-  'use strict';
+  "use strict";
 
   // ─── Token Types ─────────────────────────────────────────
   const TT = {
-    TYPE_BABY: 'TYPE_BABY', TYPE_PUP: 'TYPE_PUP', TYPE_ROOK: 'TYPE_ROOK',
-    TYPE_CHAMP: 'TYPE_CHAMP', TYPE_MOJI: 'TYPE_MOJI', TYPE_BIT: 'TYPE_BIT',
-    KW_EVO: 'KW_EVO', KW_ALTEVO: 'KW_ALTEVO', KW_FAILEVO: 'KW_FAILEVO',
-    KW_JAM: 'KW_JAM', KW_SKIP: 'KW_SKIP',
-    KW_XROS: 'KW_XROS', KW_SEND: 'KW_SEND',
-    KW_LOOP: 'KW_LOOP', KW_SPIRAL: 'KW_SPIRAL',
-    KW_WORLD: 'KW_WORLD', KW_CORE: 'KW_CORE', KW_CALL: 'KW_CALL',
-    KW_SHOW: 'KW_SHOW', KW_ASK: 'KW_ASK',
-    KW_START: 'KW_START', KW_FINISH: 'KW_FINISH',
-    IDENTIFIER: 'IDENTIFIER',
-    INT_LITERAL: 'INT_LITERAL', FLOAT_LITERAL: 'FLOAT_LITERAL',
-    BOOL_LITERAL: 'BOOL_LITERAL', STRING_LITERAL: 'STRING_LITERAL',
-    CHAR_LITERAL: 'CHAR_LITERAL',
-    OP_ASSIGN: 'OP_ASSIGN', OP_PLUS: 'OP_PLUS', OP_MINUS: 'OP_MINUS',
-    OP_MUL: 'OP_MUL', OP_DIV: 'OP_DIV',
-    OP_EQ: 'OP_EQ', OP_NE: 'OP_NE', OP_GT: 'OP_GT', OP_LT: 'OP_LT',
-    OP_GE: 'OP_GE', OP_LE: 'OP_LE',
-    LPAREN: 'LPAREN', RPAREN: 'RPAREN', LBRACE: 'LBRACE', RBRACE: 'RBRACE',
-    SEMICOLON: 'SEMICOLON', COMMA: 'COMMA', DOT: 'DOT',
-    EOF: 'EOF', INVALID: 'INVALID'
+    TYPE_BABY: "TYPE_BABY",
+    TYPE_PUP: "TYPE_PUP",
+    TYPE_ROOK: "TYPE_ROOK",
+    TYPE_CHAMP: "TYPE_CHAMP",
+    TYPE_MOJI: "TYPE_MOJI",
+    TYPE_BIT: "TYPE_BIT",
+    KW_EVO: "KW_EVO",
+    KW_ALTEVO: "KW_ALTEVO",
+    KW_FAILEVO: "KW_FAILEVO",
+    KW_JAM: "KW_JAM",
+    KW_SKIP: "KW_SKIP",
+    KW_XROS: "KW_XROS",
+    KW_SEND: "KW_SEND",
+    KW_LOOP: "KW_LOOP",
+    KW_SPIRAL: "KW_SPIRAL",
+    KW_WORLD: "KW_WORLD",
+    KW_CORE: "KW_CORE",
+    KW_CALL: "KW_CALL",
+    KW_SHOW: "KW_SHOW",
+    KW_ASK: "KW_ASK",
+    KW_START: "KW_START",
+    KW_FINISH: "KW_FINISH",
+    IDENTIFIER: "IDENTIFIER",
+    INT_LITERAL: "INT_LITERAL",
+    FLOAT_LITERAL: "FLOAT_LITERAL",
+    BOOL_LITERAL: "BOOL_LITERAL",
+    STRING_LITERAL: "STRING_LITERAL",
+    CHAR_LITERAL: "CHAR_LITERAL",
+    OP_ASSIGN: "OP_ASSIGN",
+    OP_PLUS: "OP_PLUS",
+    OP_MINUS: "OP_MINUS",
+    OP_MUL: "OP_MUL",
+    OP_DIV: "OP_DIV",
+    OP_EQ: "OP_EQ",
+    OP_NE: "OP_NE",
+    OP_GT: "OP_GT",
+    OP_LT: "OP_LT",
+    OP_GE: "OP_GE",
+    OP_LE: "OP_LE",
+    LPAREN: "LPAREN",
+    RPAREN: "RPAREN",
+    LBRACE: "LBRACE",
+    RBRACE: "RBRACE",
+    SEMICOLON: "SEMICOLON",
+    COMMA: "COMMA",
+    DOT: "DOT",
+    EOF: "EOF",
+    INVALID: "INVALID",
   };
 
   const KEYWORDS = {
-    'Baby': TT.TYPE_BABY, 'Pup': TT.TYPE_PUP, 'Rook': TT.TYPE_ROOK,
-    'Champ': TT.TYPE_CHAMP, 'Moji': TT.TYPE_MOJI, 'Bit': TT.TYPE_BIT,
-    'Evo': TT.KW_EVO, 'AltEvo': TT.KW_ALTEVO, 'FailEvo': TT.KW_FAILEVO,
-    'Jam': TT.KW_JAM, 'Skip': TT.KW_SKIP,
-    'Xros': TT.KW_XROS, 'Send': TT.KW_SEND,
-    'Loop': TT.KW_LOOP, 'Spiral': TT.KW_SPIRAL,
-    'World': TT.KW_WORLD, 'Core': TT.KW_CORE, 'Call': TT.KW_CALL,
-    'Show': TT.KW_SHOW, 'Ask': TT.KW_ASK,
-    'Start': TT.KW_START, 'Finish': TT.KW_FINISH,
-    'true': TT.BOOL_LITERAL, 'false': TT.BOOL_LITERAL
+    Baby: TT.TYPE_BABY,
+    Pup: TT.TYPE_PUP,
+    Rook: TT.TYPE_ROOK,
+    Champ: TT.TYPE_CHAMP,
+    Moji: TT.TYPE_MOJI,
+    Bit: TT.TYPE_BIT,
+    Evo: TT.KW_EVO,
+    AltEvo: TT.KW_ALTEVO,
+    FailEvo: TT.KW_FAILEVO,
+    Jam: TT.KW_JAM,
+    Skip: TT.KW_SKIP,
+    Xros: TT.KW_XROS,
+    Send: TT.KW_SEND,
+    Loop: TT.KW_LOOP,
+    Spiral: TT.KW_SPIRAL,
+    World: TT.KW_WORLD,
+    Core: TT.KW_CORE,
+    Call: TT.KW_CALL,
+    Show: TT.KW_SHOW,
+    Ask: TT.KW_ASK,
+    Start: TT.KW_START,
+    Finish: TT.KW_FINISH,
+    true: TT.BOOL_LITERAL,
+    false: TT.BOOL_LITERAL,
   };
 
   const TYPE_TOKENS = new Set([
-    TT.TYPE_BABY, TT.TYPE_PUP, TT.TYPE_ROOK,
-    TT.TYPE_CHAMP, TT.TYPE_MOJI, TT.TYPE_BIT
+    TT.TYPE_BABY,
+    TT.TYPE_PUP,
+    TT.TYPE_ROOK,
+    TT.TYPE_CHAMP,
+    TT.TYPE_MOJI,
+    TT.TYPE_BIT,
   ]);
 
   // ─── Lexer ───────────────────────────────────────────────
@@ -70,7 +116,12 @@ const DotmonCompiler = (() => {
         this.startColumn = this.column;
         this.scanToken();
       }
-      this.tokens.push({ type: TT.EOF, lexeme: '', line: this.line, column: this.column });
+      this.tokens.push({
+        type: TT.EOF,
+        lexeme: "",
+        line: this.line,
+        column: this.column,
+      });
       return this.tokens;
     }
 
@@ -79,42 +130,64 @@ const DotmonCompiler = (() => {
       if (this.isAlpha(c)) return this.identifier();
       if (this.isDigit(c)) return this.number();
       switch (c) {
-        case '"': return this.string();
-        case "'": return this.charLiteral();
-        case '(': return this.addToken(TT.LPAREN);
-        case ')': return this.addToken(TT.RPAREN);
-        case '{': return this.addToken(TT.LBRACE);
-        case '}': return this.addToken(TT.RBRACE);
-        case ';': return this.addToken(TT.SEMICOLON);
-        case ',': return this.addToken(TT.COMMA);
-        case '.': return this.addToken(TT.DOT);
-        case '+': return this.addToken(TT.OP_PLUS);
-        case '-': return this.addToken(TT.OP_MINUS);
-        case '*': return this.addToken(TT.OP_MUL);
-        case '/': return this.addToken(TT.OP_DIV);
-        case '=': return this.addToken(this.match('=') ? TT.OP_EQ : TT.OP_ASSIGN);
-        case '!': return this.addToken(this.match('=') ? TT.OP_NE : TT.INVALID);
-        case '>': return this.addToken(this.match('=') ? TT.OP_GE : TT.OP_GT);
-        case '<': return this.addToken(this.match('=') ? TT.OP_LE : TT.OP_LT);
-        default: return this.addToken(TT.INVALID);
+        case '"':
+          return this.string();
+        case "'":
+          return this.charLiteral();
+        case "(":
+          return this.addToken(TT.LPAREN);
+        case ")":
+          return this.addToken(TT.RPAREN);
+        case "{":
+          return this.addToken(TT.LBRACE);
+        case "}":
+          return this.addToken(TT.RBRACE);
+        case ";":
+          return this.addToken(TT.SEMICOLON);
+        case ",":
+          return this.addToken(TT.COMMA);
+        case ".":
+          return this.addToken(TT.DOT);
+        case "+":
+          return this.addToken(TT.OP_PLUS);
+        case "-":
+          return this.addToken(TT.OP_MINUS);
+        case "*":
+          return this.addToken(TT.OP_MUL);
+        case "/":
+          return this.addToken(TT.OP_DIV);
+        case "=":
+          return this.addToken(this.match("=") ? TT.OP_EQ : TT.OP_ASSIGN);
+        case "!":
+          return this.addToken(this.match("=") ? TT.OP_NE : TT.INVALID);
+        case ">":
+          return this.addToken(this.match("=") ? TT.OP_GE : TT.OP_GT);
+        case "<":
+          return this.addToken(this.match("=") ? TT.OP_LE : TT.OP_LT);
+        default:
+          return this.addToken(TT.INVALID);
       }
     }
 
     skipWhitespace() {
       while (!this.isAtEnd()) {
         const c = this.peek();
-        if (c === ' ' || c === '\r' || c === '\t' || c === '\n') {
-          this.advance(); continue;
-        }
-        if (c === '/' && this.peekNext() === '/') {
-          while (!this.isAtEnd() && this.peek() !== '\n') this.advance();
+        if (c === " " || c === "\r" || c === "\t" || c === "\n") {
+          this.advance();
           continue;
         }
-        if (c === '/' && this.peekNext() === '*') {
-          this.advance(); this.advance();
+        if (c === "/" && this.peekNext() === "/") {
+          while (!this.isAtEnd() && this.peek() !== "\n") this.advance();
+          continue;
+        }
+        if (c === "/" && this.peekNext() === "*") {
+          this.advance();
+          this.advance();
           while (!this.isAtEnd()) {
-            if (this.peek() === '*' && this.peekNext() === '/') {
-              this.advance(); this.advance(); break;
+            if (this.peek() === "*" && this.peekNext() === "/") {
+              this.advance();
+              this.advance();
+              break;
             }
             this.advance();
           }
@@ -125,14 +198,15 @@ const DotmonCompiler = (() => {
     }
 
     identifier() {
-      while (!this.isAtEnd() && this.isAlphaNumeric(this.peek())) this.advance();
+      while (!this.isAtEnd() && this.isAlphaNumeric(this.peek()))
+        this.advance();
       const text = this.source.slice(this.start, this.current);
       this.addToken(KEYWORDS[text] || TT.IDENTIFIER);
     }
 
     number() {
       while (!this.isAtEnd() && this.isDigit(this.peek())) this.advance();
-      if (this.peek() === '.' && this.isDigit(this.peekNext())) {
+      if (this.peek() === "." && this.isDigit(this.peekNext())) {
         this.advance();
         while (!this.isAtEnd() && this.isDigit(this.peek())) this.advance();
         return this.addToken(TT.FLOAT_LITERAL);
@@ -142,7 +216,7 @@ const DotmonCompiler = (() => {
 
     string() {
       while (!this.isAtEnd() && this.peek() !== '"') {
-        if (this.peek() === '\\') this.advance();
+        if (this.peek() === "\\") this.advance();
         this.advance();
       }
       if (this.isAtEnd()) return this.addToken(TT.INVALID);
@@ -152,32 +226,55 @@ const DotmonCompiler = (() => {
 
     charLiteral() {
       if (!this.isAtEnd() && this.peek() !== "'") {
-        if (this.peek() === '\\') this.advance();
+        if (this.peek() === "\\") this.advance();
         this.advance();
         if (this.match("'")) return this.addToken(TT.CHAR_LITERAL);
       }
       this.addToken(TT.INVALID);
     }
 
-    isAtEnd() { return this.current >= this.source.length; }
-    peek() { return this.isAtEnd() ? '\0' : this.source[this.current]; }
-    peekNext() { return this.current + 1 >= this.source.length ? '\0' : this.source[this.current + 1]; }
+    isAtEnd() {
+      return this.current >= this.source.length;
+    }
+    peek() {
+      return this.isAtEnd() ? "\0" : this.source[this.current];
+    }
+    peekNext() {
+      return this.current + 1 >= this.source.length
+        ? "\0"
+        : this.source[this.current + 1];
+    }
     advance() {
       const c = this.source[this.current++];
-      if (c === '\n') { this.line++; this.column = 1; } else { this.column++; }
+      if (c === "\n") {
+        this.line++;
+        this.column = 1;
+      } else {
+        this.column++;
+      }
       return c;
     }
     match(expected) {
-      if (this.isAtEnd() || this.source[this.current] !== expected) return false;
-      this.advance(); return true;
+      if (this.isAtEnd() || this.source[this.current] !== expected)
+        return false;
+      this.advance();
+      return true;
     }
-    isAlpha(c) { return /[a-zA-Z_]/.test(c); }
-    isDigit(c) { return /[0-9]/.test(c); }
-    isAlphaNumeric(c) { return /[a-zA-Z0-9_]/.test(c); }
+    isAlpha(c) {
+      return /[a-zA-Z_]/.test(c);
+    }
+    isDigit(c) {
+      return /[0-9]/.test(c);
+    }
+    isAlphaNumeric(c) {
+      return /[a-zA-Z0-9_]/.test(c);
+    }
     addToken(type) {
       this.tokens.push({
-        type, lexeme: this.source.slice(this.start, this.current),
-        line: this.startLine, column: this.startColumn
+        type,
+        lexeme: this.source.slice(this.start, this.current),
+        line: this.startLine,
+        column: this.startColumn,
       });
     }
   }
@@ -205,7 +302,7 @@ const DotmonCompiler = (() => {
       this.expect(TT.KW_START, "Esperado 'Start' no inicio do programa");
       const body = this.block();
       this.expect(TT.KW_FINISH, "Esperado 'Finish' no final do programa");
-      return { type: 'Program', body };
+      return { type: "Program", body };
     }
 
     block() {
@@ -243,7 +340,14 @@ const DotmonCompiler = (() => {
       this.expect(TT.OP_ASSIGN, "Esperado '='");
       const init = this.expression();
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'VarDecl', varType, name: nameTok.lexeme, init, line: typeTok.line, column: typeTok.column };
+      return {
+        type: "VarDecl",
+        varType,
+        name: nameTok.lexeme,
+        init,
+        line: typeTok.line,
+        column: typeTok.column,
+      };
     }
 
     assignment() {
@@ -251,7 +355,13 @@ const DotmonCompiler = (() => {
       this.expect(TT.OP_ASSIGN, "Esperado '='");
       const value = this.expression();
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'Assignment', name: nameTok.lexeme, value, line: nameTok.line, column: nameTok.column };
+      return {
+        type: "Assignment",
+        name: nameTok.lexeme,
+        value,
+        line: nameTok.line,
+        column: nameTok.column,
+      };
     }
 
     ifChain() {
@@ -278,7 +388,13 @@ const DotmonCompiler = (() => {
         elseBranch = this.block();
       }
 
-      return { type: 'IfChain', branches, elseBranch, line: evoTok.line, column: evoTok.column };
+      return {
+        type: "IfChain",
+        branches,
+        elseBranch,
+        line: evoTok.line,
+        column: evoTok.column,
+      };
     }
 
     showStmt() {
@@ -291,7 +407,7 @@ const DotmonCompiler = (() => {
       }
       this.expect(TT.RPAREN, "Esperado ')'");
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'ShowStmt', args, line: tok.line, column: tok.column };
+      return { type: "ShowStmt", args, line: tok.line, column: tok.column };
     }
 
     askStmt() {
@@ -300,7 +416,12 @@ const DotmonCompiler = (() => {
       const nameTok = this.expect(TT.IDENTIFIER, "Esperado identificador");
       this.expect(TT.RPAREN, "Esperado ')'");
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'AskStmt', name: nameTok.lexeme, line: tok.line, column: tok.column };
+      return {
+        type: "AskStmt",
+        name: nameTok.lexeme,
+        line: tok.line,
+        column: tok.column,
+      };
     }
 
     whileLoop() {
@@ -309,7 +430,13 @@ const DotmonCompiler = (() => {
       const condition = this.expression();
       this.expect(TT.RPAREN, "Esperado ')'");
       const body = this.block();
-      return { type: 'WhileLoop', condition, body, line: tok.line, column: tok.column };
+      return {
+        type: "WhileLoop",
+        condition,
+        body,
+        line: tok.line,
+        column: tok.column,
+      };
     }
 
     forLoop() {
@@ -321,10 +448,22 @@ const DotmonCompiler = (() => {
       const stepName = this.expect(TT.IDENTIFIER, "Esperado identificador");
       this.expect(TT.OP_ASSIGN, "Esperado '='");
       const stepValue = this.expression();
-      const step = { type: 'Assignment', name: stepName.lexeme, value: stepValue };
+      const step = {
+        type: "Assignment",
+        name: stepName.lexeme,
+        value: stepValue,
+      };
       this.expect(TT.RPAREN, "Esperado ')'");
       const body = this.block();
-      return { type: 'ForLoop', init, condition, step, body, line: tok.line, column: tok.column };
+      return {
+        type: "ForLoop",
+        init,
+        condition,
+        step,
+        body,
+        line: tok.line,
+        column: tok.column,
+      };
     }
 
     funcDecl() {
@@ -337,13 +476,24 @@ const DotmonCompiler = (() => {
       if (!this.check(TT.RPAREN)) {
         do {
           const pType = this.advance().lexeme;
-          const pName = this.expect(TT.IDENTIFIER, "Esperado nome do parametro").lexeme;
+          const pName = this.expect(
+            TT.IDENTIFIER,
+            "Esperado nome do parametro",
+          ).lexeme;
           params.push({ varType: pType, name: pName });
         } while (this.check(TT.COMMA) && this.advance());
       }
       this.expect(TT.RPAREN, "Esperado ')'");
       const body = this.block();
-      return { type: 'FuncDecl', returnType: retType, name: nameTok.lexeme, params, body, line: tok.line, column: tok.column };
+      return {
+        type: "FuncDecl",
+        returnType: retType,
+        name: nameTok.lexeme,
+        params,
+        body,
+        line: tok.line,
+        column: tok.column,
+      };
     }
 
     returnStmt() {
@@ -351,36 +501,59 @@ const DotmonCompiler = (() => {
       let value = null;
       if (!this.check(TT.SEMICOLON)) value = this.expression();
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'ReturnStmt', value, line: tok.line, column: tok.column };
+      return { type: "ReturnStmt", value, line: tok.line, column: tok.column };
     }
 
     breakStmt() {
       const tok = this.advance();
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'BreakStmt', line: tok.line, column: tok.column };
+      return { type: "BreakStmt", line: tok.line, column: tok.column };
     }
 
     skipStmt() {
       const tok = this.advance();
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'SkipStmt', line: tok.line, column: tok.column };
+      return { type: "SkipStmt", line: tok.line, column: tok.column };
     }
 
     exprStmt() {
       const expr = this.expression();
       this.expect(TT.SEMICOLON, "Esperado ';'");
-      return { type: 'ExprStmt', expression: expr, line: expr.line, column: expr.column };
+      return {
+        type: "ExprStmt",
+        expression: expr,
+        line: expr.line,
+        column: expr.column,
+      };
     }
 
     // ─── Expression Parsing ────────────────────────────────
-    expression() { return this.comparison(); }
+    expression() {
+      return this.comparison();
+    }
 
     comparison() {
       let left = this.addition();
-      while (this.checkAny([TT.OP_EQ, TT.OP_NE, TT.OP_GT, TT.OP_LT, TT.OP_GE, TT.OP_LE])) {
+      while (
+        this.checkAny([
+          TT.OP_EQ,
+          TT.OP_NE,
+          TT.OP_GT,
+          TT.OP_LT,
+          TT.OP_GE,
+          TT.OP_LE,
+        ])
+      ) {
         const op = this.advance();
         const right = this.addition();
-        left = { type: 'BinaryExpr', op: op.lexeme, left, right, line: op.line, column: op.column };
+        left = {
+          type: "BinaryExpr",
+          op: op.lexeme,
+          left,
+          right,
+          line: op.line,
+          column: op.column,
+        };
       }
       return left;
     }
@@ -390,7 +563,14 @@ const DotmonCompiler = (() => {
       while (this.checkAny([TT.OP_PLUS, TT.OP_MINUS])) {
         const op = this.advance();
         const right = this.multiplication();
-        left = { type: 'BinaryExpr', op: op.lexeme, left, right, line: op.line, column: op.column };
+        left = {
+          type: "BinaryExpr",
+          op: op.lexeme,
+          left,
+          right,
+          line: op.line,
+          column: op.column,
+        };
       }
       return left;
     }
@@ -400,7 +580,14 @@ const DotmonCompiler = (() => {
       while (this.checkAny([TT.OP_MUL, TT.OP_DIV])) {
         const op = this.advance();
         const right = this.unary();
-        left = { type: 'BinaryExpr', op: op.lexeme, left, right, line: op.line, column: op.column };
+        left = {
+          type: "BinaryExpr",
+          op: op.lexeme,
+          left,
+          right,
+          line: op.line,
+          column: op.column,
+        };
       }
       return left;
     }
@@ -409,7 +596,13 @@ const DotmonCompiler = (() => {
       if (this.check(TT.OP_MINUS)) {
         const op = this.advance();
         const operand = this.unary();
-        return { type: 'UnaryExpr', op: '-', operand, line: op.line, column: op.column };
+        return {
+          type: "UnaryExpr",
+          op: "-",
+          operand,
+          line: op.line,
+          column: op.column,
+        };
       }
       return this.primary();
     }
@@ -418,23 +611,48 @@ const DotmonCompiler = (() => {
       const tok = this.peek();
       if (tok.type === TT.INT_LITERAL) {
         this.advance();
-        return { type: 'IntLiteral', value: parseInt(tok.lexeme, 10), line: tok.line, column: tok.column };
+        return {
+          type: "IntLiteral",
+          value: parseInt(tok.lexeme, 10),
+          line: tok.line,
+          column: tok.column,
+        };
       }
       if (tok.type === TT.FLOAT_LITERAL) {
         this.advance();
-        return { type: 'FloatLiteral', value: parseFloat(tok.lexeme), line: tok.line, column: tok.column };
+        return {
+          type: "FloatLiteral",
+          value: parseFloat(tok.lexeme),
+          line: tok.line,
+          column: tok.column,
+        };
       }
       if (tok.type === TT.STRING_LITERAL) {
         this.advance();
-        return { type: 'StringLiteral', value: tok.lexeme.slice(1, -1), line: tok.line, column: tok.column };
+        return {
+          type: "StringLiteral",
+          value: tok.lexeme.slice(1, -1),
+          line: tok.line,
+          column: tok.column,
+        };
       }
       if (tok.type === TT.CHAR_LITERAL) {
         this.advance();
-        return { type: 'CharLiteral', value: tok.lexeme.slice(1, -1), line: tok.line, column: tok.column };
+        return {
+          type: "CharLiteral",
+          value: tok.lexeme.slice(1, -1),
+          line: tok.line,
+          column: tok.column,
+        };
       }
       if (tok.type === TT.BOOL_LITERAL) {
         this.advance();
-        return { type: 'BoolLiteral', value: tok.lexeme === 'true', line: tok.line, column: tok.column };
+        return {
+          type: "BoolLiteral",
+          value: tok.lexeme === "true",
+          line: tok.line,
+          column: tok.column,
+        };
       }
       if (tok.type === TT.IDENTIFIER) {
         this.advance();
@@ -443,12 +661,26 @@ const DotmonCompiler = (() => {
           const args = [];
           if (!this.check(TT.RPAREN)) {
             args.push(this.expression());
-            while (this.check(TT.COMMA)) { this.advance(); args.push(this.expression()); }
+            while (this.check(TT.COMMA)) {
+              this.advance();
+              args.push(this.expression());
+            }
           }
           this.expect(TT.RPAREN, "Esperado ')'");
-          return { type: 'CallExpr', callee: tok.lexeme, args, line: tok.line, column: tok.column };
+          return {
+            type: "CallExpr",
+            callee: tok.lexeme,
+            args,
+            line: tok.line,
+            column: tok.column,
+          };
         }
-        return { type: 'Identifier', name: tok.lexeme, line: tok.line, column: tok.column };
+        return {
+          type: "Identifier",
+          name: tok.lexeme,
+          line: tok.line,
+          column: tok.column,
+        };
       }
       if (tok.type === TT.LPAREN) {
         this.advance();
@@ -460,15 +692,32 @@ const DotmonCompiler = (() => {
     }
 
     // ─── Parser Helpers ────────────────────────────────────
-    peek() { return this.tokens[this.pos]; }
-    peekNext() { return this.pos + 1 < this.tokens.length ? this.tokens[this.pos + 1] : this.tokens[this.pos]; }
-    advance() { return this.tokens[this.pos++]; }
-    check(type) { return this.peek().type === type; }
-    checkAny(types) { return types.includes(this.peek().type); }
-    isAtEnd() { return this.peek().type === TT.EOF; }
+    peek() {
+      return this.tokens[this.pos];
+    }
+    peekNext() {
+      return this.pos + 1 < this.tokens.length
+        ? this.tokens[this.pos + 1]
+        : this.tokens[this.pos];
+    }
+    advance() {
+      return this.tokens[this.pos++];
+    }
+    check(type) {
+      return this.peek().type === type;
+    }
+    checkAny(types) {
+      return types.includes(this.peek().type);
+    }
+    isAtEnd() {
+      return this.peek().type === TT.EOF;
+    }
     expect(type, message) {
       if (this.check(type)) return this.advance();
-      throw new ParseError(`${message}, encontrado '${this.peek().lexeme}'`, this.peek());
+      throw new ParseError(
+        `${message}, encontrado '${this.peek().lexeme}'`,
+        this.peek(),
+      );
     }
   }
 
@@ -481,19 +730,31 @@ const DotmonCompiler = (() => {
       this.usedVars = new Set();
     }
 
-    get currentScope() { return this.scopes[this.scopes.length - 1]; }
+    get currentScope() {
+      return this.scopes[this.scopes.length - 1];
+    }
     get symbolTable() {
       const table = {};
       for (const scope of this.scopes) Object.assign(table, scope);
       return table;
     }
 
-    pushScope() { this.scopes.push({}); }
-    popScope() { return this.scopes.pop(); }
+    pushScope() {
+      this.scopes.push({});
+    }
+    popScope() {
+      return this.scopes.pop();
+    }
 
     declare(name, type, line, col) {
       if (this.currentScope[name]) {
-        this.addDiag('error', `Variavel '${name}' ja declarada neste escopo`, line, col, col + name.length);
+        this.addDiag(
+          "error",
+          `Variavel '${name}' ja declarada neste escopo`,
+          line,
+          col,
+          col + name.length,
+        );
       }
       this.currentScope[name] = type;
       this.declarations[name] = { type, line, column: col };
@@ -507,35 +768,61 @@ const DotmonCompiler = (() => {
     }
 
     addDiag(severity, message, line, col, endCol) {
-      this.diagnostics.push({ severity, message, line: line || 1, column: col || 1, endColumn: endCol || (col || 1) + 1 });
+      this.diagnostics.push({
+        severity,
+        message,
+        line: line || 1,
+        column: col || 1,
+        endColumn: endCol || (col || 1) + 1,
+      });
     }
 
     analyze(ast) {
       if (!ast) return this.diagnostics;
       this.visitStatements(ast.body);
       for (const [name, info] of Object.entries(this.declarations)) {
-        if (!this.usedVars.has(name) && !info.type.startsWith('func:')) {
-          this.addDiag('warning', `Variavel '${name}' declarada mas nunca utilizada`, info.line, info.column, info.column + name.length);
+        if (!this.usedVars.has(name) && !info.type.startsWith("func:")) {
+          this.addDiag(
+            "warning",
+            `Variavel '${name}' declarada mas nunca utilizada`,
+            info.line,
+            info.column,
+            info.column + name.length,
+          );
         }
       }
       return this.diagnostics;
     }
 
-    visitStatements(stmts) { for (const s of stmts) this.visitStmt(s); }
+    visitStatements(stmts) {
+      for (const s of stmts) this.visitStmt(s);
+    }
 
     visitStmt(stmt) {
       switch (stmt.type) {
-        case 'VarDecl': return this.visitVarDecl(stmt);
-        case 'Assignment': return this.visitAssignment(stmt);
-        case 'IfChain': return this.visitIfChain(stmt);
-        case 'ShowStmt': return this.visitShow(stmt);
-        case 'AskStmt': return this.visitAsk(stmt);
-        case 'WhileLoop': return this.visitWhileLoop(stmt);
-        case 'ForLoop': return this.visitForLoop(stmt);
-        case 'FuncDecl': return this.visitFuncDecl(stmt);
-        case 'ReturnStmt': return this.visitReturn(stmt);
-        case 'ExprStmt': return this.visitExpr(stmt.expression);
-        case 'BreakStmt': case 'SkipStmt': break;
+        case "VarDecl":
+          return this.visitVarDecl(stmt);
+        case "Assignment":
+          return this.visitAssignment(stmt);
+        case "IfChain":
+          return this.visitIfChain(stmt);
+        case "ShowStmt":
+          return this.visitShow(stmt);
+        case "AskStmt":
+          return this.visitAsk(stmt);
+        case "WhileLoop":
+          return this.visitWhileLoop(stmt);
+        case "ForLoop":
+          return this.visitForLoop(stmt);
+        case "FuncDecl":
+          return this.visitFuncDecl(stmt);
+        case "ReturnStmt":
+          return this.visitReturn(stmt);
+        case "ExprStmt":
+          return this.visitExpr(stmt.expression);
+        case "BreakStmt":
+        case "SkipStmt":
+          break;
       }
     }
 
@@ -543,16 +830,32 @@ const DotmonCompiler = (() => {
       const initType = this.visitExpr(stmt.init);
       const declType = this.dotmonToInternal(stmt.varType);
       if (initType && declType && !this.compatible(declType, initType)) {
-        this.addDiag('error', `Incompatibilidade de tipos: nao e possivel atribuir '${initType}' a '${stmt.varType}'`,
-          stmt.line, stmt.column, stmt.column + stmt.varType.length);
+        this.addDiag(
+          "error",
+          `Incompatibilidade de tipos: nao e possivel atribuir '${initType}' a '${stmt.varType}'`,
+          stmt.line,
+          stmt.column,
+          stmt.column + stmt.varType.length,
+        );
       }
-      this.declare(stmt.name, stmt.varType, stmt.line, stmt.column + stmt.varType.length + 1);
+      this.declare(
+        stmt.name,
+        stmt.varType,
+        stmt.line,
+        stmt.column + stmt.varType.length + 1,
+      );
     }
 
     visitAssignment(stmt) {
       const varType = this.lookup(stmt.name);
       if (!varType) {
-        this.addDiag('error', `Identificador nao declarado: '${stmt.name}'`, stmt.line, stmt.column, stmt.column + stmt.name.length);
+        this.addDiag(
+          "error",
+          `Identificador nao declarado: '${stmt.name}'`,
+          stmt.line,
+          stmt.column,
+          stmt.column + stmt.name.length,
+        );
         this.visitExpr(stmt.value);
         return;
       }
@@ -560,8 +863,13 @@ const DotmonCompiler = (() => {
       const valType = this.visitExpr(stmt.value);
       const expected = this.dotmonToInternal(varType);
       if (valType && expected && !this.compatible(expected, valType)) {
-        this.addDiag('error', `Incompatibilidade de tipos: nao e possivel atribuir '${valType}' a '${varType}'`,
-          stmt.line, stmt.column, stmt.column + stmt.name.length);
+        this.addDiag(
+          "error",
+          `Incompatibilidade de tipos: nao e possivel atribuir '${valType}' a '${varType}'`,
+          stmt.line,
+          stmt.column,
+          stmt.column + stmt.name.length,
+        );
       }
     }
 
@@ -579,11 +887,20 @@ const DotmonCompiler = (() => {
       }
     }
 
-    visitShow(stmt) { for (const arg of stmt.args) this.visitExpr(arg); }
+    visitShow(stmt) {
+      for (const arg of stmt.args) this.visitExpr(arg);
+    }
 
     visitAsk(stmt) {
       const type = this.lookup(stmt.name);
-      if (!type) this.addDiag('error', `Identificador nao declarado: '${stmt.name}'`, stmt.line, stmt.column, stmt.column + stmt.name.length);
+      if (!type)
+        this.addDiag(
+          "error",
+          `Identificador nao declarado: '${stmt.name}'`,
+          stmt.line,
+          stmt.column,
+          stmt.column + stmt.name.length,
+        );
       this.usedVars.add(stmt.name);
     }
 
@@ -604,52 +921,86 @@ const DotmonCompiler = (() => {
     }
 
     visitFuncDecl(stmt) {
-      this.declare(stmt.name, `func:${stmt.returnType}`, stmt.line, stmt.column);
+      this.declare(
+        stmt.name,
+        `func:${stmt.returnType}`,
+        stmt.line,
+        stmt.column,
+      );
       this.pushScope();
-      for (const p of stmt.params) this.declare(p.name, p.varType, stmt.line, stmt.column);
+      for (const p of stmt.params)
+        this.declare(p.name, p.varType, stmt.line, stmt.column);
       this.visitStatements(stmt.body);
       this.popScope();
     }
 
-    visitReturn(stmt) { if (stmt.value) this.visitExpr(stmt.value); }
+    visitReturn(stmt) {
+      if (stmt.value) this.visitExpr(stmt.value);
+    }
 
     visitExpr(expr) {
       if (!expr) return null;
       switch (expr.type) {
-        case 'IntLiteral': return 'int';
-        case 'FloatLiteral': return 'float';
-        case 'StringLiteral': return 'string';
-        case 'CharLiteral': return 'char';
-        case 'BoolLiteral': return 'bool';
-        case 'Identifier': {
+        case "IntLiteral":
+          return "int";
+        case "FloatLiteral":
+          return "float";
+        case "StringLiteral":
+          return "string";
+        case "CharLiteral":
+          return "char";
+        case "BoolLiteral":
+          return "bool";
+        case "Identifier": {
           const t = this.lookup(expr.name);
           if (!t) {
-            this.addDiag('error', `Identificador nao declarado: '${expr.name}'`, expr.line, expr.column, expr.column + expr.name.length);
+            this.addDiag(
+              "error",
+              `Identificador nao declarado: '${expr.name}'`,
+              expr.line,
+              expr.column,
+              expr.column + expr.name.length,
+            );
             return null;
           }
           this.usedVars.add(expr.name);
           return this.dotmonToInternal(t);
         }
-        case 'BinaryExpr': {
+        case "BinaryExpr": {
           const lt = this.visitExpr(expr.left);
           const rt = this.visitExpr(expr.right);
-          if (['==', '!=', '>', '<', '>=', '<='].includes(expr.op)) return 'bool';
-          if (lt === 'string' || rt === 'string') {
-            this.addDiag('error', `Operacao '${expr.op}' nao suportada para strings`, expr.line, expr.column, expr.column + 1);
+          if (["==", "!=", ">", "<", ">=", "<="].includes(expr.op))
+            return "bool";
+          if (lt === "string" || rt === "string") {
+            this.addDiag(
+              "error",
+              `Operacao '${expr.op}' nao suportada para strings`,
+              expr.line,
+              expr.column,
+              expr.column + 1,
+            );
             return null;
           }
-          if (lt === 'float' || rt === 'float') return 'float';
-          return 'int';
+          if (lt === "float" || rt === "float") return "float";
+          return "int";
         }
-        case 'UnaryExpr': return this.visitExpr(expr.operand);
-        case 'CallExpr': {
+        case "UnaryExpr":
+          return this.visitExpr(expr.operand);
+        case "CallExpr": {
           for (const a of expr.args) this.visitExpr(a);
           const funcType = this.lookup(expr.callee);
           if (!funcType) {
-            this.addDiag('error', `Funcao nao declarada: '${expr.callee}'`, expr.line, expr.column, expr.column + expr.callee.length);
+            this.addDiag(
+              "error",
+              `Funcao nao declarada: '${expr.callee}'`,
+              expr.line,
+              expr.column,
+              expr.column + expr.callee.length,
+            );
             return null;
           }
-          if (funcType.startsWith('func:')) return this.dotmonToInternal(funcType.split(':')[1]);
+          if (funcType.startsWith("func:"))
+            return this.dotmonToInternal(funcType.split(":")[1]);
           return null;
         }
       }
@@ -657,16 +1008,16 @@ const DotmonCompiler = (() => {
     }
 
     dotmonToInternal(t) {
-      if (['Baby', 'Pup', 'Rook', 'Champ'].includes(t)) return 'int';
-      if (t === 'Moji') return 'string';
-      if (t === 'Bit') return 'bool';
+      if (["Baby", "Pup", "Rook", "Champ"].includes(t)) return "int";
+      if (t === "Moji") return "string";
+      if (t === "Bit") return "bool";
       return t;
     }
 
     compatible(expected, actual) {
       if (expected === actual) return true;
-      if (expected === 'int' && actual === 'float') return true;
-      if (expected === 'float' && actual === 'int') return true;
+      if (expected === "int" && actual === "float") return true;
+      if (expected === "float" && actual === "int") return true;
       return false;
     }
   }
@@ -682,65 +1033,79 @@ const DotmonCompiler = (() => {
     }
 
     generate(ast) {
-      if (!ast) return '// Compilation failed\n';
+      if (!ast) return "// Compilation failed\n";
       this.scanIncludes(ast.body);
 
-      this.output.push('/* Generated by dotmon compiler v0.1.0 */');
-      this.output.push('');
-      this.output.push('#include <stdio.h>');
-      if (this.needsString) this.output.push('#include <string.h>');
-      if (this.needsStdbool) this.output.push('#include <stdbool.h>');
-      this.output.push('');
-      this.output.push('int main(void) {');
+      this.output.push("/* Generated by dotmon compiler v0.1.0 */");
+      this.output.push("");
+      this.output.push("#include <stdio.h>");
+      if (this.needsString) this.output.push("#include <string.h>");
+      if (this.needsStdbool) this.output.push("#include <stdbool.h>");
+      this.output.push("");
+      this.output.push("int main(void) {");
       this.indent = 1;
 
       for (const stmt of ast.body) this.genStmt(stmt);
 
-      this.output.push('');
-      this.emit('return 0;');
+      this.output.push("");
+      this.emit("return 0;");
       this.indent = 0;
-      this.output.push('}');
-      this.output.push('');
-      return this.output.join('\n');
+      this.output.push("}");
+      this.output.push("");
+      return this.output.join("\n");
     }
 
     scanIncludes(stmts) {
       for (const s of stmts) {
-        if (s.type === 'VarDecl') {
-          if (s.varType === 'Bit') this.needsStdbool = true;
-          if (s.varType === 'Moji') this.needsString = true;
+        if (s.type === "VarDecl") {
+          if (s.varType === "Bit") this.needsStdbool = true;
+          if (s.varType === "Moji") this.needsString = true;
         }
-        if (s.type === 'Assignment' && this.symbols[s.name] === 'Moji') this.needsString = true;
-        if (s.type === 'IfChain') {
+        if (s.type === "Assignment" && this.symbols[s.name] === "Moji")
+          this.needsString = true;
+        if (s.type === "IfChain") {
           for (const b of s.branches) this.scanIncludes(b.body);
           if (s.elseBranch) this.scanIncludes(s.elseBranch);
         }
-        if (s.type === 'WhileLoop') this.scanIncludes(s.body);
-        if (s.type === 'ForLoop') this.scanIncludes(s.body);
+        if (s.type === "WhileLoop") this.scanIncludes(s.body);
+        if (s.type === "ForLoop") this.scanIncludes(s.body);
       }
     }
 
-    emit(line) { this.output.push('    '.repeat(this.indent) + line); }
+    emit(line) {
+      this.output.push("    ".repeat(this.indent) + line);
+    }
 
     genStmt(stmt) {
       switch (stmt.type) {
-        case 'VarDecl': return this.genVarDecl(stmt);
-        case 'Assignment': return this.genAssignment(stmt);
-        case 'IfChain': return this.genIfChain(stmt);
-        case 'ShowStmt': return this.genShow(stmt);
-        case 'AskStmt': return this.genAsk(stmt);
-        case 'WhileLoop': return this.genWhileLoop(stmt);
-        case 'ForLoop': return this.genForLoop(stmt);
-        case 'ReturnStmt': return this.genReturn(stmt);
-        case 'BreakStmt': return this.emit('break;');
-        case 'SkipStmt': return this.emit('continue;');
-        case 'ExprStmt': return this.emit(this.genExpr(stmt.expression) + ';');
+        case "VarDecl":
+          return this.genVarDecl(stmt);
+        case "Assignment":
+          return this.genAssignment(stmt);
+        case "IfChain":
+          return this.genIfChain(stmt);
+        case "ShowStmt":
+          return this.genShow(stmt);
+        case "AskStmt":
+          return this.genAsk(stmt);
+        case "WhileLoop":
+          return this.genWhileLoop(stmt);
+        case "ForLoop":
+          return this.genForLoop(stmt);
+        case "ReturnStmt":
+          return this.genReturn(stmt);
+        case "BreakStmt":
+          return this.emit("break;");
+        case "SkipStmt":
+          return this.emit("continue;");
+        case "ExprStmt":
+          return this.emit(this.genExpr(stmt.expression) + ";");
       }
     }
 
     genVarDecl(stmt) {
       const cType = this.mapType(stmt.varType);
-      if (stmt.varType === 'Moji') {
+      if (stmt.varType === "Moji") {
         this.emit(`char ${stmt.name}[] = ${this.genExpr(stmt.init)};`);
       } else {
         this.emit(`${cType} ${stmt.name} = ${this.genExpr(stmt.init)};`);
@@ -748,7 +1113,7 @@ const DotmonCompiler = (() => {
     }
 
     genAssignment(stmt) {
-      if (this.symbols[stmt.name] === 'Moji') {
+      if (this.symbols[stmt.name] === "Moji") {
         this.emit(`strcpy(${stmt.name}, ${this.genExpr(stmt.value)});`);
       } else {
         this.emit(`${stmt.name} = ${this.genExpr(stmt.value)};`);
@@ -757,25 +1122,25 @@ const DotmonCompiler = (() => {
 
     genIfChain(stmt) {
       stmt.branches.forEach((branch, i) => {
-        const kw = i === 0 ? 'if' : 'else if';
+        const kw = i === 0 ? "if" : "else if";
         this.emit(`${kw} (${this.genExpr(branch.condition)}) {`);
         this.indent++;
         for (const s of branch.body) this.genStmt(s);
         this.indent--;
-        this.emit('}');
+        this.emit("}");
       });
       if (stmt.elseBranch) {
-        this.emit('else {');
+        this.emit("else {");
         this.indent++;
         for (const s of stmt.elseBranch) this.genStmt(s);
         this.indent--;
-        this.emit('}');
+        this.emit("}");
       }
     }
 
     genShow(stmt) {
       for (const arg of stmt.args) {
-        if (arg.type === 'StringLiteral') {
+        if (arg.type === "StringLiteral") {
           this.emit(`printf("${this.escC(arg.value)}\\n");`);
         } else {
           const fmt = this.printfFmt(arg);
@@ -786,7 +1151,7 @@ const DotmonCompiler = (() => {
 
     genAsk(stmt) {
       const varType = this.symbols[stmt.name];
-      if (varType === 'Moji') {
+      if (varType === "Moji") {
         this.emit(`scanf("%99s", ${stmt.name});`);
       } else {
         this.emit(`scanf("%d", &${stmt.name});`);
@@ -798,7 +1163,7 @@ const DotmonCompiler = (() => {
       this.indent++;
       for (const s of stmt.body) this.genStmt(s);
       this.indent--;
-      this.emit('}');
+      this.emit("}");
     }
 
     genForLoop(stmt) {
@@ -809,140 +1174,208 @@ const DotmonCompiler = (() => {
       this.indent++;
       for (const s of stmt.body) this.genStmt(s);
       this.indent--;
-      this.emit('}');
+      this.emit("}");
     }
 
     genReturn(stmt) {
-      this.emit(stmt.value ? `return ${this.genExpr(stmt.value)};` : 'return;');
+      this.emit(stmt.value ? `return ${this.genExpr(stmt.value)};` : "return;");
     }
 
     genExpr(expr) {
       switch (expr.type) {
-        case 'IntLiteral': return String(expr.value);
-        case 'FloatLiteral': return String(expr.value);
-        case 'StringLiteral': return `"${this.escC(expr.value)}"`;
-        case 'CharLiteral': return `'${expr.value}'`;
-        case 'BoolLiteral': return expr.value ? 'true' : 'false';
-        case 'Identifier': return expr.name;
-        case 'BinaryExpr': return `${this.genExpr(expr.left)} ${expr.op} ${this.genExpr(expr.right)}`;
-        case 'UnaryExpr': return `-${this.genExpr(expr.operand)}`;
-        case 'CallExpr': return `${expr.callee}(${expr.args.map(a => this.genExpr(a)).join(', ')})`;
+        case "IntLiteral":
+          return String(expr.value);
+        case "FloatLiteral":
+          return String(expr.value);
+        case "StringLiteral":
+          return `"${this.escC(expr.value)}"`;
+        case "CharLiteral":
+          return `'${expr.value}'`;
+        case "BoolLiteral":
+          return expr.value ? "true" : "false";
+        case "Identifier":
+          return expr.name;
+        case "BinaryExpr":
+          return `${this.genExpr(expr.left)} ${expr.op} ${this.genExpr(expr.right)}`;
+        case "UnaryExpr":
+          return `-${this.genExpr(expr.operand)}`;
+        case "CallExpr":
+          return `${expr.callee}(${expr.args.map((a) => this.genExpr(a)).join(", ")})`;
       }
-      return '/* unknown */';
+      return "/* unknown */";
     }
 
     mapType(t) {
-      return { 'Baby': 'int', 'Pup': 'int', 'Rook': 'long', 'Champ': 'int', 'Moji': 'char', 'Bit': 'bool' }[t] || 'int';
+      return (
+        {
+          Baby: "int",
+          Pup: "int",
+          Rook: "long",
+          Champ: "int",
+          Moji: "char",
+          Bit: "bool",
+        }[t] || "int"
+      );
     }
 
     printfFmt(expr) {
-      if (expr.type === 'StringLiteral') return '%s';
-      if (expr.type === 'IntLiteral') return '%d';
-      if (expr.type === 'FloatLiteral') return '%f';
-      if (expr.type === 'BoolLiteral') return '%d';
-      if (expr.type === 'Identifier') {
+      if (expr.type === "StringLiteral") return "%s";
+      if (expr.type === "IntLiteral") return "%d";
+      if (expr.type === "FloatLiteral") return "%f";
+      if (expr.type === "BoolLiteral") return "%d";
+      if (expr.type === "Identifier") {
         const t = this.symbols[expr.name];
-        if (t === 'Moji') return '%s';
-        if (t === 'Rook') return '%ld';
-        if (t === 'Bit') return '%d';
-        return '%d';
+        if (t === "Moji") return "%s";
+        if (t === "Rook") return "%ld";
+        if (t === "Bit") return "%d";
+        return "%d";
       }
-      return '%d';
+      return "%d";
     }
 
-    escC(s) { return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"'); }
+    escC(s) {
+      return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    }
   }
 
   // ─── AST to String ──────────────────────────────────────
   function exprStr(e) {
-    if (!e) return '?';
+    if (!e) return "?";
     switch (e.type) {
-      case 'IntLiteral': return `Int(${e.value})`;
-      case 'FloatLiteral': return `Float(${e.value})`;
-      case 'StringLiteral': return `String("${e.value}")`;
-      case 'CharLiteral': return `Char('${e.value}')`;
-      case 'BoolLiteral': return `Bool(${e.value})`;
-      case 'Identifier': return `Ident(${e.name})`;
-      case 'BinaryExpr': return `BinExpr(${e.op}, ${exprStr(e.left)}, ${exprStr(e.right)})`;
-      case 'UnaryExpr': return `Unary(-, ${exprStr(e.operand)})`;
-      case 'CallExpr': return `Call(${e.callee}, [${e.args.map(exprStr).join(', ')}])`;
+      case "IntLiteral":
+        return `Int(${e.value})`;
+      case "FloatLiteral":
+        return `Float(${e.value})`;
+      case "StringLiteral":
+        return `String("${e.value}")`;
+      case "CharLiteral":
+        return `Char('${e.value}')`;
+      case "BoolLiteral":
+        return `Bool(${e.value})`;
+      case "Identifier":
+        return `Ident(${e.name})`;
+      case "BinaryExpr":
+        return `BinExpr(${e.op}, ${exprStr(e.left)}, ${exprStr(e.right)})`;
+      case "UnaryExpr":
+        return `Unary(-, ${exprStr(e.operand)})`;
+      case "CallExpr":
+        return `Call(${e.callee}, [${e.args.map(exprStr).join(", ")}])`;
     }
-    return '?';
+    return "?";
   }
 
   function astToString(node, prefix, isLast) {
-    if (!node) return '';
-    prefix = prefix || '';
+    if (!node) return "";
+    prefix = prefix || "";
     if (isLast === undefined) isLast = true;
-    const conn = isLast ? '\u2514\u2500\u2500 ' : '\u251C\u2500\u2500 ';
-    const childPfx = prefix + (isLast ? '    ' : '\u2502   ');
-    let r = '';
+    const conn = isLast ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 ";
+    const childPfx = prefix + (isLast ? "    " : "\u2502   ");
+    let r = "";
 
-    if (node.type === 'Program') {
-      r += 'Program\n';
-      node.body.forEach((s, i) => { r += astToString(s, '', i === node.body.length - 1); });
+    if (node.type === "Program") {
+      r += "Program\n";
+      node.body.forEach((s, i) => {
+        r += astToString(s, "", i === node.body.length - 1);
+      });
       return r;
     }
 
     r += prefix + conn;
     switch (node.type) {
-      case 'VarDecl':
+      case "VarDecl":
         r += `VarDecl [${node.varType}] ${node.name}\n`;
-        r += childPfx + '\u2514\u2500\u2500 init: ' + exprStr(node.init) + '\n';
+        r += childPfx + "\u2514\u2500\u2500 init: " + exprStr(node.init) + "\n";
         break;
-      case 'Assignment':
+      case "Assignment":
         r += `Assignment ${node.name}\n`;
-        r += childPfx + '\u2514\u2500\u2500 value: ' + exprStr(node.value) + '\n';
+        r +=
+          childPfx + "\u2514\u2500\u2500 value: " + exprStr(node.value) + "\n";
         break;
-      case 'IfChain':
-        r += 'IfChain\n';
+      case "IfChain":
+        r += "IfChain\n";
         node.branches.forEach((b, i) => {
           const last = !node.elseBranch && i === node.branches.length - 1;
-          const c2 = last ? '\u2514\u2500\u2500 ' : '\u251C\u2500\u2500 ';
-          const p2 = childPfx + (last ? '    ' : '\u2502   ');
-          r += childPfx + c2 + (i === 0 ? 'Evo' : 'AltEvo') + '\n';
-          r += p2 + '\u251C\u2500\u2500 cond: ' + exprStr(b.condition) + '\n';
-          b.body.forEach((s, j) => { r += astToString(s, p2, j === b.body.length - 1); });
+          const c2 = last ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 ";
+          const p2 = childPfx + (last ? "    " : "\u2502   ");
+          r += childPfx + c2 + (i === 0 ? "Evo" : "AltEvo") + "\n";
+          r += p2 + "\u251C\u2500\u2500 cond: " + exprStr(b.condition) + "\n";
+          b.body.forEach((s, j) => {
+            r += astToString(s, p2, j === b.body.length - 1);
+          });
         });
         if (node.elseBranch) {
-          r += childPfx + '\u2514\u2500\u2500 FailEvo\n';
-          const ep = childPfx + '    ';
-          node.elseBranch.forEach((s, i) => { r += astToString(s, ep, i === node.elseBranch.length - 1); });
+          r += childPfx + "\u2514\u2500\u2500 FailEvo\n";
+          const ep = childPfx + "    ";
+          node.elseBranch.forEach((s, i) => {
+            r += astToString(s, ep, i === node.elseBranch.length - 1);
+          });
         }
         break;
-      case 'ShowStmt':
-        r += 'Show\n';
+      case "ShowStmt":
+        r += "Show\n";
         node.args.forEach((a, i) => {
-          const c2 = i === node.args.length - 1 ? '\u2514\u2500\u2500 ' : '\u251C\u2500\u2500 ';
-          r += childPfx + c2 + exprStr(a) + '\n';
+          const c2 =
+            i === node.args.length - 1
+              ? "\u2514\u2500\u2500 "
+              : "\u251C\u2500\u2500 ";
+          r += childPfx + c2 + exprStr(a) + "\n";
         });
         break;
-      case 'AskStmt': r += `Ask(${node.name})\n`; break;
-      case 'WhileLoop':
-        r += 'Loop\n';
-        r += childPfx + '\u251C\u2500\u2500 cond: ' + exprStr(node.condition) + '\n';
-        node.body.forEach((s, i) => { r += astToString(s, childPfx, i === node.body.length - 1); });
+      case "AskStmt":
+        r += `Ask(${node.name})\n`;
         break;
-      case 'ForLoop':
-        r += 'Spiral\n';
+      case "WhileLoop":
+        r += "Loop\n";
+        r +=
+          childPfx +
+          "\u251C\u2500\u2500 cond: " +
+          exprStr(node.condition) +
+          "\n";
+        node.body.forEach((s, i) => {
+          r += astToString(s, childPfx, i === node.body.length - 1);
+        });
+        break;
+      case "ForLoop":
+        r += "Spiral\n";
         r += astToString(node.init, childPfx, false);
-        r += childPfx + '\u251C\u2500\u2500 cond: ' + exprStr(node.condition) + '\n';
+        r +=
+          childPfx +
+          "\u251C\u2500\u2500 cond: " +
+          exprStr(node.condition) +
+          "\n";
         r += astToString(node.step, childPfx, false);
-        node.body.forEach((s, i) => { r += astToString(s, childPfx, i === node.body.length - 1); });
+        node.body.forEach((s, i) => {
+          r += astToString(s, childPfx, i === node.body.length - 1);
+        });
         break;
-      case 'ReturnStmt':
-        r += 'Send' + (node.value ? ' ' + exprStr(node.value) : '') + '\n'; break;
-      case 'BreakStmt': r += 'Jam\n'; break;
-      case 'SkipStmt': r += 'Skip\n'; break;
-      case 'ExprStmt': r += exprStr(node.expression) + '\n'; break;
-      default: r += node.type + '\n';
+      case "ReturnStmt":
+        r += "Send" + (node.value ? " " + exprStr(node.value) : "") + "\n";
+        break;
+      case "BreakStmt":
+        r += "Jam\n";
+        break;
+      case "SkipStmt":
+        r += "Skip\n";
+        break;
+      case "ExprStmt":
+        r += exprStr(node.expression) + "\n";
+        break;
+      default:
+        r += node.type + "\n";
     }
     return r;
   }
 
   // ─── Main Compile Function ──────────────────────────────
   function compile(source, filename) {
-    const result = { tokens: [], ast: null, cCode: '', diagnostics: [], astString: '', filename: filename || 'unknown.mon' };
+    const result = {
+      tokens: [],
+      ast: null,
+      cCode: "",
+      diagnostics: [],
+      astString: "",
+      filename: filename || "unknown.mon",
+    };
 
     const lexer = new Lexer(source);
     result.tokens = lexer.tokenize();
@@ -950,8 +1383,11 @@ const DotmonCompiler = (() => {
     for (const t of result.tokens) {
       if (t.type === TT.INVALID) {
         result.diagnostics.push({
-          severity: 'error', message: `Token invalido: '${t.lexeme}'`,
-          line: t.line, column: t.column, endColumn: t.column + t.lexeme.length
+          severity: "error",
+          message: `Token invalido: '${t.lexeme}'`,
+          line: t.line,
+          column: t.column,
+          endColumn: t.column + t.lexeme.length,
         });
       }
     }
@@ -961,8 +1397,11 @@ const DotmonCompiler = (() => {
       result.ast = parser.parse();
     } catch (e) {
       result.diagnostics.push({
-        severity: 'error', message: e.message,
-        line: e.line || 1, column: e.column || 1, endColumn: (e.column || 1) + 10
+        severity: "error",
+        message: e.message,
+        line: e.line || 1,
+        column: e.column || 1,
+        endColumn: (e.column || 1) + 10,
       });
       result.astString = `Parse Error: ${e.message}`;
       return result;
@@ -978,7 +1417,20 @@ const DotmonCompiler = (() => {
     return result;
   }
 
-  function tokenize(source) { return new Lexer(source).tokenize(); }
+  function tokenize(source) {
+    return new Lexer(source).tokenize();
+  }
 
-  return { TT, KEYWORDS, TYPE_TOKENS, compile, tokenize, Lexer, Parser, Analyzer, CodeGenerator, astToString };
+  return {
+    TT,
+    KEYWORDS,
+    TYPE_TOKENS,
+    compile,
+    tokenize,
+    Lexer,
+    Parser,
+    Analyzer,
+    CodeGenerator,
+    astToString,
+  };
 })();
