@@ -1,0 +1,11 @@
+// teste.mon
+
+Start
+{
+    Moji nomeDoDigimon = "Charlesmon";
+    Baby 
+    Loop () {
+        
+    }    
+}
+Finish

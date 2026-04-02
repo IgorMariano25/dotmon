@@ -1,0 +1,10 @@
+Start
+{
+    Moji name = "Tailmon";
+    Baby contador = 1;
+
+    Loop (contador < 3) {
+        Show(name);
+    }
+}
+Finish

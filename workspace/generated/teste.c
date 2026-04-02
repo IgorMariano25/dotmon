@@ -4,11 +4,11 @@
 #include <string.h>
 
 int main(void) {
-    char nomeDoDigimon[] = "Charlesmon";
-    printf("O nome do meu digimon é:\n");
-    printf("%s\n", nomeDoDigimon);
-    printf("O nome do meu digimon é:\n");
-    printf("%s\n", nomeDoDigimon);
+    char name[] = "Tailmon";
+    int contador = 1;
+    while (contador < 3) {
+        printf("%s\n", name);
+    }
 
     return 0;
 }

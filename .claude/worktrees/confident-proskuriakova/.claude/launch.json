@@ -4,7 +4,7 @@
     {
       "name": "dotmon-ide",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "3456", "--directory", "ide"],
+      "runtimeArgs": ["-m", "http.server", "3456", "--directory", "E:/dotmon/ide"],
       "port": 3456
     }
   ]

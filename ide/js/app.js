@@ -496,6 +496,8 @@ Finish
       cursorBlinking: "smooth",
       cursorSmoothCaretAnimation: "on",
       padding: { top: 8 },
+      glyphMargin: true,
+      overviewRulerLanes: 3,
     });
 
     const cContainer = document.getElementById("cEditorContainer");
@@ -517,7 +519,9 @@ Finish
 
     // Real-time diagnostics as you type
     let diagnosticTimer = null;
+    let editorReady = false;
     mainEditor.onDidChangeModelContent(() => {
+      if (!editorReady) return; // Skip saves during initialization
       fileSystem[currentFile] = mainEditor.getValue();
       saveFS();
       saveFileToBackend(currentFile);
@@ -532,17 +536,35 @@ Finish
 
     // Async initialization: load files from API then render
     initFileSystem().then(() => {
-      doCompile(currentFile);
+      // Ensure defaults are loaded if filesystem is empty or file is missing
+      if (Object.keys(fileSystem).length === 0 || !fileSystem[currentFile]) {
+        fileSystem = { ...DEFAULT_FILES, ...fileSystem };
+        saveFS();
+      }
       renderEditor(currentFile);
+      doCompile(currentFile);
       renderFileTree();
       activateTab("src/main.mon");
+      editorReady = true;
+    }).catch(() => {
+      // Absolute fallback
+      fileSystem = { ...DEFAULT_FILES };
+      saveFS();
+      renderEditor(currentFile);
+      doCompile(currentFile);
+      renderFileTree();
+      activateTab("src/main.mon");
+      editorReady = true;
     });
 
     // ─── Diagnostics (real-time) ─────────────────────────────
+    let currentDecorations = [];
+
     function runDiagnostics() {
       const source = mainEditor.getValue();
       if (!source.trim()) {
         monaco.editor.setModelMarkers(mainEditor.getModel(), "dotmon", []);
+        clearDiagnosticDecorations();
         return;
       }
       try {
@@ -566,6 +588,88 @@ Finish
         endColumn: d.endColumn || d.column + 1,
       }));
       monaco.editor.setModelMarkers(mainEditor.getModel(), "dotmon", markers);
+      applyDiagnosticDecorations(diagnostics);
+    }
+
+    function clearDiagnosticDecorations() {
+      currentDecorations = mainEditor.deltaDecorations(currentDecorations, []);
+      clearLensStyles();
+    }
+
+    // Inject dynamic CSS for Error Lens inline messages
+    const lensStyleMap = {};
+    function injectLensStyle(id, message, isError) {
+      if (lensStyleMap[id]) lensStyleMap[id].remove();
+      const color = isError ? "rgba(241, 76, 76, 0.7)" : "rgba(204, 167, 0, 0.65)";
+      const symbol = isError ? "\u00D7" : "\u26A0";
+      const escaped = message.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/'/g, "\\'");
+      const style = document.createElement("style");
+      style.textContent = `.${id}::after { content: "   ${symbol} ${escaped}"; color: ${color}; font-style: italic; font-size: 0.9em; opacity: 0.85; pointer-events: none; }`;
+      document.head.appendChild(style);
+      lensStyleMap[id] = style;
+    }
+
+    function clearLensStyles() {
+      for (const [id, style] of Object.entries(lensStyleMap)) {
+        style.remove();
+        delete lensStyleMap[id];
+      }
+    }
+
+    function applyDiagnosticDecorations(diagnostics) {
+      const decorations = [];
+      for (const d of diagnostics) {
+        const isError = d.severity === "error";
+        const line = d.line || 1;
+        const model = mainEditor.getModel();
+        const lineLength = model.getLineLength(line);
+
+        // 1) Gutter icon
+        decorations.push({
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            isWholeLine: false,
+            glyphMarginClassName: isError
+              ? "dotmon-glyph-error"
+              : "dotmon-glyph-warning",
+            glyphMarginHoverMessage: { value: `**${isError ? "Error" : "Warning"}:** ${d.message}` },
+          },
+        });
+
+        // 2) Full line background highlight
+        decorations.push({
+          range: new monaco.Range(line, 1, line, lineLength + 1),
+          options: {
+            isWholeLine: true,
+            className: isError
+              ? "dotmon-line-error"
+              : "dotmon-line-warning",
+            overviewRuler: {
+              color: isError ? "#f14c4c" : "#cca700",
+              position: monaco.editor.OverviewRulerLane.Full,
+            },
+            minimap: {
+              color: isError ? "#f14c4c" : "#cca700",
+              position: monaco.editor.MinimapPosition.Inline,
+            },
+          },
+        });
+
+        // 3) Error Lens: inline message after the line
+        const lensId = `dotmon-lens-${line}-${isError ? "e" : "w"}`;
+        injectLensStyle(lensId, d.message, isError);
+        decorations.push({
+          range: new monaco.Range(line, lineLength + 1, line, lineLength + 1),
+          options: {
+            afterContentClassName: lensId,
+          },
+        });
+      }
+
+      currentDecorations = mainEditor.deltaDecorations(
+        currentDecorations,
+        decorations,
+      );
     }
 
     // ─── Compile Pipeline ────────────────────────────────────
@@ -697,6 +801,7 @@ Finish
       } else {
         cEditor.setValue('// Click "Compilar" or press Ctrl+B to compile');
         renderErrors([]);
+        clearDiagnosticDecorations();
         document.getElementById("astContent").textContent = "";
       }
     }
@@ -725,23 +830,26 @@ Finish
       for (const d of diagnostics) {
         const isErr = d.severity === "error";
         const color = isErr ? "#f14c4c" : "#cca700";
+        const label = isErr ? "error" : "warning";
         const icon = isErr
-          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" stroke="none"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15" stroke="#1e1e1e" stroke-width="2.5"/><line x1="9" y1="9" x2="15" y2="15" stroke="#1e1e1e" stroke-width="2.5"/></svg>`
-          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" stroke="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" stroke="#1e1e1e" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="#1e1e1e" stroke-width="2"/></svg>`;
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" stroke="none"><circle cx="12" cy="12" r="10"/><path d="M8 8l8 8M16 8l-8 8" stroke="#1e1e1e" stroke-width="2.5" stroke-linecap="round"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" stroke="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/></svg>`;
         html += `
           <div class="error-item" data-line="${d.line}" data-col="${d.column}">
             <div class="error-item-icon">${icon}</div>
             <div class="error-item-body">
               <div class="error-item-message">${escHTML(d.message)}</div>
               <div class="error-item-location">
-                <span class="file">${currentFile}</span> :${d.line}:${d.column}
+                <span class="file">${currentFile}</span>
+                <span style="color:#858585">[Ln ${d.line}, Col ${d.column}]</span>
+                <span style="color:${color};font-size:10px;margin-left:6px;text-transform:uppercase;font-weight:600;letter-spacing:0.5px">${label}</span>
               </div>
             </div>
           </div>`;
       }
       errorListEl.innerHTML =
         html ||
-        '<div style="padding:20px;color:#858585;text-align:center">No diagnostics</div>';
+        '<div style="padding:24px;color:#5a5a5a;text-align:center;font-size:13px">No problems detected</div>';
 
       // Click to navigate
       errorListEl.querySelectorAll(".error-item").forEach((el) => {
