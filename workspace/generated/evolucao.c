@@ -4,9 +4,9 @@
 #include <string.h>
 
 int main(void) {
-    char digimon[] = "Koromon";
+    char digimon[256] = "Koromon";
     int stage = 1;
-    int xp = 500;
+    float xp = 500;
     if (xp > 1000) {
         stage = 4;
         strcpy(digimon, "WarGreymon");

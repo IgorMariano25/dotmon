@@ -476,6 +476,142 @@ Finish
       },
     });
 
+    // ─── Hover Provider (tooltips para keywords) ─────────────
+    const dotmonHovers = {
+      // Tipos de Dados
+      Baby: {
+        desc: "**Tipo inteiro** — Equivalente a `int` em C. Armazena números inteiros.",
+        example: "Baby nivel = 10;\nShow(nivel);",
+      },
+      Pup: {
+        desc: "**Tipo ponto flutuante** — Equivalente a `float` em C. Armazena números decimais.",
+        example: "Pup peso = 45.5;\nShow(peso);",
+      },
+      Rook: {
+        desc: "**Tipo inteiro longo** — Equivalente a `long` em C. Armazena inteiros grandes.",
+        example: "Rook experiencia = 999999;\nShow(experiencia);",
+      },
+      Champ: {
+        desc: "**Tipo inteiro** — Equivalente a `int` em C. Inteiro estágio Champion.",
+        example: "Champ poder = 500;\nShow(poder);",
+      },
+      Moji: {
+        desc: "**Tipo string** — Equivalente a `char[256]` em C. Armazena texto.",
+        example: 'Moji nome = "Agumon";\nShow(nome);',
+      },
+      Bit: {
+        desc: "**Tipo booleano** — Equivalente a `bool` em C. Armazena `true` ou `false`.",
+        example: 'Bit ativo = true;\nEvo (ativo) {\n    Show("Ativo!");\n}',
+      },
+      // Inicializar e Finalizar
+      Start: {
+        desc: "**Início do programa** — Marca o ponto de entrada. Equivalente a `int main() {` em C.",
+        example: 'Start\n{\n    Show("Ola, Mundo Digital!");\n}\nFinish',
+      },
+      Finish: {
+        desc: "**Fim do programa** — Marca o encerramento. Equivalente a `return 0; }` em C.",
+        example: 'Start\n{\n    Show("Fim!");\n}\nFinish',
+      },
+      // Controle de Fluxo (Condicionais)
+      Evo: {
+        desc: "**Condicional if** — Executa o bloco se a condição for verdadeira.",
+        example: 'Evo (nivel > 10) {\n    Show("Nivel alto!");\n}',
+      },
+      AltEvo: {
+        desc: "**Condicional else if** — Condição alternativa, testada se o `Evo` anterior for falso.",
+        example:
+          'Evo (nivel > 10) {\n    Show("Alto");\n}\nAltEvo (nivel > 5) {\n    Show("Medio");\n}',
+      },
+      FailEvo: {
+        desc: "**Condicional else** — Executado quando todas as condições anteriores falharam.",
+        example:
+          'Evo (nivel > 10) {\n    Show("Alto");\n}\nFailEvo {\n    Show("Baixo");\n}',
+      },
+      // Loops
+      Loop: {
+        desc: "**Laço for / while** — Repete o bloco. Suporta forma completa `(init; cond; step)` ou apenas `(cond)`.",
+        example:
+          "// Forma while:\nLoop (x < 10) {\n    Show(x);\n    x = x + 1;\n}\n\n// Forma for:\nLoop (Baby i = 0; i < 5; i = i + 1) {\n    Show(i);\n}",
+      },
+      Spiral: {
+        desc: "**Laço while** — Repete o bloco enquanto a condição for verdadeira.",
+        example: "Baby x = 1;\nSpiral (x < 100) {\n    x = x * 2;\n}\nShow(x);",
+      },
+      // Controle de Fluxo (dentro de loops)
+      Jam: {
+        desc: "**Break** — Interrompe a execução do loop atual imediatamente.",
+        example:
+          "Loop (Baby i = 0; i < 100; i = i + 1) {\n    Evo (i == 10) {\n        Jam;\n    }\n}",
+      },
+      Skip: {
+        desc: "**Continue** — Pula para a próxima iteração do loop, ignorando o restante do bloco.",
+        example:
+          "Loop (Baby i = 0; i < 10; i = i + 1) {\n    Evo (i == 5) {\n        Skip;\n    }\n    Show(i);\n}",
+      },
+      // Funções
+      Xros: {
+        desc: "**Declaração de função** — Define uma função reutilizável com parâmetros e retorno opcional.",
+        example: "Xros Baby somar(Baby a, Baby b) {\n    Send a + b;\n}",
+      },
+      Send: {
+        desc: "**Return** — Retorna um valor de dentro de uma função.",
+        example: "Xros Baby dobro(Baby n) {\n    Send n * 2;\n}",
+      },
+      Call: {
+        desc: "**Chamada de função** — Invoca uma função declarada com `Xros`.",
+        example: "Call somar(5, 3);",
+      },
+      // Entrada e Saída
+      Show: {
+        desc: "**Imprimir** — Equivalente a `printf()` em C. Exibe valores no terminal.",
+        example: 'Show("Ola mundo!");\nShow(42);\nShow(nome);',
+      },
+      Ask: {
+        desc: "**Ler entrada** — Equivalente a `scanf()` em C. Lê um valor do usuário e armazena na variável.",
+        example: 'Moji nome = "";\nAsk(nome);\nShow(nome);',
+      },
+      // Interoperabilidade / Escopo
+      World: {
+        desc: "**Escopo global** — Declara elementos no escopo global do programa.",
+        example: "World {\n    Baby globalVar = 100;\n}",
+      },
+      Core: {
+        desc: "**Módulo** — Define um módulo de código para organização.",
+        example: "Core utils {\n    // funcoes utilitarias\n}",
+      },
+      // Operadores (literais booleanos)
+      true: {
+        desc: "**Literal booleano verdadeiro** — Valor `true` do tipo `Bit`.",
+        example: "Bit ativo = true;",
+      },
+      false: {
+        desc: "**Literal booleano falso** — Valor `false` do tipo `Bit`.",
+        example: "Bit ativo = false;",
+      },
+    };
+
+    monaco.languages.registerHoverProvider("dotmon", {
+      provideHover: (model, position) => {
+        const word = model.getWordAtPosition(position);
+        if (!word) return null;
+        const info = dotmonHovers[word.word];
+        if (!info) return null;
+        return {
+          range: new monaco.Range(
+            position.lineNumber,
+            word.startColumn,
+            position.lineNumber,
+            word.endColumn,
+          ),
+          contents: [
+            { value: `**\`${word.word}\`**` },
+            { value: info.desc },
+            { value: "```dotmon\n" + info.example + "\n```" },
+          ],
+        };
+      },
+    });
+
     // ─── Create Editors ──────────────────────────────────────
     const editorContainer = document.getElementById("monacoEditorContainer");
     mainEditor = monaco.editor.create(editorContainer, {
