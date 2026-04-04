@@ -56,6 +56,8 @@ const DotmonCompiler = (() => {
     DOT: "DOT",
     EOF: "EOF",
     INVALID: "INVALID",
+    LINE_COMMENT: "LINE_COMMENT",
+    BLOCK_COMMENT: "BLOCK_COMMENT",
   };
 
   const KEYWORDS = {
@@ -177,10 +179,23 @@ const DotmonCompiler = (() => {
           continue;
         }
         if (c === "/" && this.peekNext() === "/") {
+          this.start = this.current;
+          this.startLine = this.line;
+          this.startColumn = this.column;
           while (!this.isAtEnd() && this.peek() !== "\n") this.advance();
+          const text = this.source.slice(this.start, this.current);
+          this.tokens.push({
+            type: TT.LINE_COMMENT,
+            lexeme: text,
+            line: this.startLine,
+            column: this.startColumn,
+          });
           continue;
         }
         if (c === "/" && this.peekNext() === "*") {
+          this.start = this.current;
+          this.startLine = this.line;
+          this.startColumn = this.column;
           this.advance();
           this.advance();
           while (!this.isAtEnd()) {
@@ -191,6 +206,13 @@ const DotmonCompiler = (() => {
             }
             this.advance();
           }
+          const text = this.source.slice(this.start, this.current);
+          this.tokens.push({
+            type: TT.BLOCK_COMMENT,
+            lexeme: text,
+            line: this.startLine,
+            column: this.startColumn,
+          });
           continue;
         }
         break;
@@ -292,15 +314,39 @@ const DotmonCompiler = (() => {
     constructor(tokens) {
       this.tokens = tokens;
       this.pos = 0;
+      this.pendingComments = [];
     }
 
     parse() {
       return this.program();
     }
 
+    // Collect any comment tokens before the next real token
+    collectComments() {
+      while (
+        this.pos < this.tokens.length &&
+        (this.tokens[this.pos].type === TT.LINE_COMMENT ||
+          this.tokens[this.pos].type === TT.BLOCK_COMMENT)
+      ) {
+        this.pendingComments.push(this.tokens[this.pos]);
+        this.pos++;
+      }
+    }
+
+    // Drain pending comments and attach to a node
+    attachComments(node) {
+      if (this.pendingComments.length > 0) {
+        node.leadingComments = this.pendingComments.map((t) => t.lexeme);
+        this.pendingComments = [];
+      }
+      return node;
+    }
+
     program() {
+      this.collectComments();
       this.expect(TT.KW_START, "Esperado 'Start' no inicio do programa");
       const body = this.block();
+      this.collectComments();
       this.expect(TT.KW_FINISH, "Esperado 'Finish' no final do programa");
       return { type: "Program", body };
     }
@@ -309,7 +355,21 @@ const DotmonCompiler = (() => {
       this.expect(TT.LBRACE, "Esperado '{'");
       const stmts = [];
       while (!this.check(TT.RBRACE) && !this.isAtEnd()) {
-        stmts.push(this.statement());
+        // Capture comments collected by check→peek→collectComments above
+        const comments = this.pendingComments.splice(0);
+        const stmt = this.statement();
+        if (comments.length > 0) {
+          stmt.leadingComments = comments.map((t) => t.lexeme);
+        }
+        stmts.push(stmt);
+      }
+      // Trailing comments before closing brace
+      const trailing = this.pendingComments.splice(0);
+      if (trailing.length > 0) {
+        stmts.push({
+          type: "CommentBlock",
+          leadingComments: trailing.map((t) => t.lexeme),
+        });
       }
       this.expect(TT.RBRACE, "Esperado '}'");
       return stmts;
@@ -770,14 +830,25 @@ const DotmonCompiler = (() => {
 
     // ─── Parser Helpers ────────────────────────────────────
     peek() {
+      this.collectComments();
       return this.tokens[this.pos];
     }
     peekNext() {
-      return this.pos + 1 < this.tokens.length
-        ? this.tokens[this.pos + 1]
+      this.collectComments();
+      let next = this.pos + 1;
+      while (
+        next < this.tokens.length &&
+        (this.tokens[next].type === TT.LINE_COMMENT ||
+          this.tokens[next].type === TT.BLOCK_COMMENT)
+      ) {
+        next++;
+      }
+      return next < this.tokens.length
+        ? this.tokens[next]
         : this.tokens[this.pos];
     }
     advance() {
+      this.collectComments();
       return this.tokens[this.pos++];
     }
     check(type) {
@@ -901,6 +972,7 @@ const DotmonCompiler = (() => {
           return this.visitExpr(stmt.expression);
         case "BreakStmt":
         case "SkipStmt":
+        case "CommentBlock":
           break;
       }
     }
@@ -1159,7 +1231,10 @@ const DotmonCompiler = (() => {
       const funcDecls = ast.body.filter((s) => s.type === "FuncDecl");
       const mainStmts = ast.body.filter((s) => s.type !== "FuncDecl");
 
-      for (const func of funcDecls) this.genFuncDecl(func);
+      for (const func of funcDecls) {
+        this.emitComments(func);
+        this.genFuncDecl(func);
+      }
 
       this.output.push("int main(void) {");
       this.indent = 1;
@@ -1196,8 +1271,19 @@ const DotmonCompiler = (() => {
       this.output.push("    ".repeat(this.indent) + line);
     }
 
+    emitComments(stmt) {
+      if (stmt.leadingComments) {
+        for (const c of stmt.leadingComments) {
+          this.emit(c);
+        }
+      }
+    }
+
     genStmt(stmt) {
+      this.emitComments(stmt);
       switch (stmt.type) {
+        case "CommentBlock":
+          return; // comments already emitted above
         case "VarDecl":
           return this.genVarDecl(stmt);
         case "Assignment":

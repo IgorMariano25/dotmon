@@ -5,7 +5,8 @@ Start
 {
     // Define base stats
     Baby nivel = 15;
-    Pup experiencia = 5000;
+    Rook experiencia = 5000;
+    Pup forca = 27.49;
     Moji nome = "Agumon";
     Moji evolucao = "Greymon";
     Bit prontoParaCombate = true;
@@ -39,7 +40,7 @@ Start
     }
 
     // Battle calculation
-    Champ dano = experiencia * nivel;
+    Pup dano = experiencia * nivel * forca;
     Show(dano);
 
     // Display results

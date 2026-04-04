@@ -20,6 +20,7 @@ void evoluirNivel(int nivel) {
 int main(void) {
     int nivel = 15;
     float experiencia = 5000;
+    float forca = 27.49;
     char nome[256] = "Agumon";
     char evolucao[256] = "Greymon";
     bool prontoParaCombate = true;
@@ -39,8 +40,8 @@ int main(void) {
         printf("Pronto para lutar:\n");
         printf("%d\n", prontoParaCombate);
     }
-    int dano = experiencia * nivel;
-    printf("%d\n", dano);
+    float dano = experiencia * nivel * forca;
+    printf("%f\n", dano);
     printf("Batalha concluida!\n");
 
     return 0;
