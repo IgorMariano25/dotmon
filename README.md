@@ -101,10 +101,10 @@ Todos os tipos são nomeados com referências a estágios de evolução Digimon:
 | Tipo dotmon | Tipo C equivalente | Descrição |
 |-------------|-------------------|-----------|
 | `Baby` | `int` | Inteiro (estágio bebê) |
-| `Pup` | `int` | Inteiro (estágio filhote) |
+| `Pup` | `float` | Ponto flutuante (estágio filhote) |
 | `Rook` | `long` | Inteiro longo (estágio rookie) |
 | `Champ` | `int` | Inteiro (estágio champion) |
-| `Moji` | `char[]` | String / cadeia de caracteres |
+| `Moji` | `char[256]` | String / cadeia de caracteres |
 | `Bit` | `bool` | Booleano (verdadeiro/falso) |
 
 ### Palavras-chave
@@ -115,8 +115,8 @@ Todos os tipos são nomeados com referências a estágios de evolução Digimon:
 | **Condicional** | `Evo` | `if` | Condição principal |
 | | `AltEvo` | `else if` | Condição alternativa |
 | | `FailEvo` | `else` | Caso padrão |
-| **Repetição** | `Loop` | `while` | Laço while |
-| | `Spiral` | `for` | Laço for |
+| **Repetição** | `Loop` | `for` / `while` | Laço for (ou while se sem init/step) |
+| | `Spiral` | `while` | Laço while |
 | **Controle de fluxo** | `Jam` | `break` | Interromper laço |
 | | `Skip` | `continue` | Pular iteração |
 | **Funções** | `Xros` | declaração de função | Declarar função |
@@ -185,7 +185,7 @@ Start
 Finish
 ```
 
-**Loop:**
+**Loop (while-style):**
 ```
 Start
 {
@@ -194,6 +194,30 @@ Start
         Show(contador);
         contador = contador + 1;
     }
+}
+Finish
+```
+
+**Loop (for-style):**
+```
+Start
+{
+    Loop (Baby i = 0; i < 10; i = i + 1) {
+        Show(i);
+    }
+}
+Finish
+```
+
+**Spiral (while):**
+```
+Start
+{
+    Baby x = 1;
+    Spiral (x < 100) {
+        x = x * 2;
+    }
+    Show(x);
 }
 Finish
 ```
@@ -269,9 +293,10 @@ Traduz a AST validada para código C compilável:
 
 **Mapeamento de tipos:**
 ```
-Baby, Pup, Champ → int
+Baby, Champ → int
+Pup → float
 Rook → long
-Moji → char[] (com strcpy para atribuições)
+Moji → char[256] (com strcpy para atribuições)
 Bit → bool (inclui <stdbool.h>)
 ```
 
@@ -491,7 +516,7 @@ Finish
 #include <stdbool.h>
 
 int main(void) {
-    char nome[] = "Agumon";
+    char nome[256] = "Agumon";
     int nivel = 10;
     bool pronto = true;
 

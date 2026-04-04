@@ -642,6 +642,47 @@
         </div>
     </div>
 
+    <!-- Settings Overlay -->
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <div class="settings-header">
+                <span class="settings-title">Configurações</span>
+                <button class="settings-close" id="settingsClose" title="Fechar">&times;</button>
+            </div>
+            <div class="settings-body">
+                <div class="settings-group">
+                    <label class="settings-label" for="settingFontSize">Tamanho da fonte</label>
+                    <input type="number" class="settings-input" id="settingFontSize" min="10" max="32" value="14">
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label" for="settingTabSize">Tamanho do tab</label>
+                    <input type="number" class="settings-input" id="settingTabSize" min="1" max="8" value="4">
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label" for="settingWordWrap">Word Wrap</label>
+                    <select class="settings-input" id="settingWordWrap">
+                        <option value="off">Desligado</option>
+                        <option value="on">Ligado</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label" for="settingMinimap">Minimap</label>
+                    <select class="settings-input" id="settingMinimap">
+                        <option value="on">Ligado</option>
+                        <option value="off">Desligado</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label" for="settingAutoCompile">Compilação automática ao salvar</label>
+                    <select class="settings-input" id="settingAutoCompile">
+                        <option value="on">Ligado</option>
+                        <option value="off">Desligado</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Context Menu (File) -->
     <div class="context-menu" id="contextMenu">
         <div class="context-menu-item" data-action="new-file">

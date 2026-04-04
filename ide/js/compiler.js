@@ -321,12 +321,14 @@ const DotmonCompiler = (() => {
       if (tok.type === TT.KW_EVO) return this.ifChain();
       if (tok.type === TT.KW_SHOW) return this.showStmt();
       if (tok.type === TT.KW_ASK) return this.askStmt();
-      if (tok.type === TT.KW_LOOP) return this.whileLoop();
-      if (tok.type === TT.KW_SPIRAL) return this.forLoop();
+      if (tok.type === TT.KW_LOOP) return this.forLoop();
+      if (tok.type === TT.KW_SPIRAL) return this.whileLoop();
       if (tok.type === TT.KW_XROS) return this.funcDecl();
       if (tok.type === TT.KW_SEND) return this.returnStmt();
       if (tok.type === TT.KW_JAM) return this.breakStmt();
       if (tok.type === TT.KW_SKIP) return this.skipStmt();
+      if (tok.type === TT.KW_WORLD) return this.worldStmt();
+      if (tok.type === TT.KW_CALL) return this.callDecl();
       if (tok.type === TT.IDENTIFIER && this.peekNext().type === TT.OP_ASSIGN) {
         return this.assignment();
       }
@@ -426,7 +428,7 @@ const DotmonCompiler = (() => {
 
     whileLoop() {
       const tok = this.advance();
-      this.expect(TT.LPAREN, "Esperado '(' apos 'Loop'");
+      this.expect(TT.LPAREN, "Esperado '(' apos 'Spiral'");
       const condition = this.expression();
       this.expect(TT.RPAREN, "Esperado ')'");
       const body = this.block();
@@ -441,46 +443,76 @@ const DotmonCompiler = (() => {
 
     forLoop() {
       const tok = this.advance();
-      this.expect(TT.LPAREN, "Esperado '(' apos 'Spiral'");
-      const init = this.varDecl();
-      const condition = this.expression();
-      this.expect(TT.SEMICOLON, "Esperado ';'");
-      const stepName = this.expect(TT.IDENTIFIER, "Esperado identificador");
-      this.expect(TT.OP_ASSIGN, "Esperado '='");
-      const stepValue = this.expression();
-      const step = {
-        type: "Assignment",
-        name: stepName.lexeme,
-        value: stepValue,
-      };
-      this.expect(TT.RPAREN, "Esperado ')'");
-      const body = this.block();
-      return {
-        type: "ForLoop",
-        init,
-        condition,
-        step,
-        body,
-        line: tok.line,
-        column: tok.column,
-      };
+      this.expect(TT.LPAREN, "Esperado '(' apos 'Loop'");
+
+      // Detect if this is a full for-loop (has type token as init) or a while-style loop
+      if (TYPE_TOKENS.has(this.peek().type)) {
+        // Full for-loop: Loop (Baby x = 0; x < 10; x = x + 1) { ... }
+        const init = this.varDecl();
+        const condition = this.expression();
+        this.expect(TT.SEMICOLON, "Esperado ';'");
+        const stepName = this.expect(TT.IDENTIFIER, "Esperado identificador");
+        this.expect(TT.OP_ASSIGN, "Esperado '='");
+        const stepValue = this.expression();
+        const step = {
+          type: "Assignment",
+          name: stepName.lexeme,
+          value: stepValue,
+        };
+        this.expect(TT.RPAREN, "Esperado ')'");
+        const body = this.block();
+        return {
+          type: "ForLoop",
+          init,
+          condition,
+          step,
+          body,
+          line: tok.line,
+          column: tok.column,
+        };
+      } else {
+        // While-style loop: Loop (condition) { ... }
+        const condition = this.expression();
+        this.expect(TT.RPAREN, "Esperado ')'");
+        const body = this.block();
+        return {
+          type: "WhileLoop",
+          condition,
+          body,
+          line: tok.line,
+          column: tok.column,
+        };
+      }
     }
 
     funcDecl() {
       const tok = this.advance();
-      const retTypeTok = this.advance();
-      const retType = retTypeTok.lexeme;
+      let retType = "void";
+      // If next token is a type keyword, it's the return type
+      if (TYPE_TOKENS.has(this.peek().type)) {
+        const retTypeTok = this.advance();
+        retType = retTypeTok.lexeme;
+      }
       const nameTok = this.expect(TT.IDENTIFIER, "Esperado nome da funcao");
       this.expect(TT.LPAREN, "Esperado '('");
       const params = [];
       if (!this.check(TT.RPAREN)) {
         do {
-          const pType = this.advance().lexeme;
-          const pName = this.expect(
-            TT.IDENTIFIER,
-            "Esperado nome do parametro",
-          ).lexeme;
-          params.push({ varType: pType, name: pName });
+          // Parameters can be typed (Baby x) or untyped (x)
+          if (TYPE_TOKENS.has(this.peek().type)) {
+            const pType = this.advance().lexeme;
+            const pName = this.expect(
+              TT.IDENTIFIER,
+              "Esperado nome do parametro",
+            ).lexeme;
+            params.push({ varType: pType, name: pName });
+          } else {
+            const pName = this.expect(
+              TT.IDENTIFIER,
+              "Esperado nome do parametro",
+            ).lexeme;
+            params.push({ varType: "Baby", name: pName });
+          }
         } while (this.check(TT.COMMA) && this.advance());
       }
       this.expect(TT.RPAREN, "Esperado ')'");
@@ -514,6 +546,51 @@ const DotmonCompiler = (() => {
       const tok = this.advance();
       this.expect(TT.SEMICOLON, "Esperado ';'");
       return { type: "SkipStmt", line: tok.line, column: tok.column };
+    }
+
+    worldStmt() {
+      const tok = this.advance();
+      const nameTok = this.expect(TT.IDENTIFIER, "Esperado nome do modulo");
+      this.expect(TT.SEMICOLON, "Esperado ';'");
+      return {
+        type: "ExprStmt",
+        expression: {
+          type: "Identifier",
+          name: nameTok.lexeme,
+          line: tok.line,
+          column: tok.column,
+        },
+        line: tok.line,
+        column: tok.column,
+      };
+    }
+
+    callDecl() {
+      const tok = this.advance();
+      const nameTok = this.expect(TT.IDENTIFIER, "Esperado nome da funcao");
+      this.expect(TT.LPAREN, "Esperado '('");
+      const args = [];
+      if (!this.check(TT.RPAREN)) {
+        args.push(this.expression());
+        while (this.check(TT.COMMA)) {
+          this.advance();
+          args.push(this.expression());
+        }
+      }
+      this.expect(TT.RPAREN, "Esperado ')'");
+      this.expect(TT.SEMICOLON, "Esperado ';'");
+      return {
+        type: "ExprStmt",
+        expression: {
+          type: "CallExpr",
+          callee: nameTok.lexeme,
+          args,
+          line: tok.line,
+          column: tok.column,
+        },
+        line: tok.line,
+        column: tok.column,
+      };
     }
 
     exprStmt() {
@@ -757,7 +834,8 @@ const DotmonCompiler = (() => {
         );
       }
       this.currentScope[name] = type;
-      this.declarations[name] = { type, line, column: col };
+      const scopeKey = `${name}@${this.scopes.length - 1}`;
+      this.declarations[scopeKey] = { type, line, column: col, name };
     }
 
     lookup(name) {
@@ -780,14 +858,15 @@ const DotmonCompiler = (() => {
     analyze(ast) {
       if (!ast) return this.diagnostics;
       this.visitStatements(ast.body);
-      for (const [name, info] of Object.entries(this.declarations)) {
-        if (!this.usedVars.has(name) && !info.type.startsWith("func:")) {
+      for (const [scopeKey, info] of Object.entries(this.declarations)) {
+        const varName = info.name || scopeKey;
+        if (!this.usedVars.has(varName) && !info.type.startsWith("func:")) {
           this.addDiag(
             "warning",
-            `Variavel '${name}' declarada mas nunca utilizada`,
+            `Variavel '${varName}' declarada mas nunca utilizada`,
             info.line,
             info.column,
-            info.column + name.length,
+            info.column + varName.length,
           );
         }
       }
@@ -829,7 +908,20 @@ const DotmonCompiler = (() => {
     visitVarDecl(stmt) {
       const initType = this.visitExpr(stmt.init);
       const declType = this.dotmonToInternal(stmt.varType);
-      if (initType && declType && !this.compatible(declType, initType)) {
+      const warnNarrow = () => {
+        this.addDiag(
+          "warning",
+          `Conversao implicita de '${initType}' para '${stmt.varType}' pode perder dados`,
+          stmt.line,
+          stmt.column,
+          stmt.column + stmt.varType.length,
+        );
+      };
+      if (
+        initType &&
+        declType &&
+        !this.compatible(declType, initType, warnNarrow)
+      ) {
         this.addDiag(
           "error",
           `Incompatibilidade de tipos: nao e possivel atribuir '${initType}' a '${stmt.varType}'`,
@@ -862,7 +954,20 @@ const DotmonCompiler = (() => {
       this.usedVars.add(stmt.name);
       const valType = this.visitExpr(stmt.value);
       const expected = this.dotmonToInternal(varType);
-      if (valType && expected && !this.compatible(expected, valType)) {
+      const warnNarrow = () => {
+        this.addDiag(
+          "warning",
+          `Conversao implicita de '${valType}' para '${varType}' pode perder dados`,
+          stmt.line,
+          stmt.column,
+          stmt.column + stmt.name.length,
+        );
+      };
+      if (
+        valType &&
+        expected &&
+        !this.compatible(expected, valType, warnNarrow)
+      ) {
         this.addDiag(
           "error",
           `Incompatibilidade de tipos: nao e possivel atribuir '${valType}' a '${varType}'`,
@@ -1008,16 +1113,23 @@ const DotmonCompiler = (() => {
     }
 
     dotmonToInternal(t) {
-      if (["Baby", "Pup", "Rook", "Champ"].includes(t)) return "int";
+      if (["Baby", "Rook"].includes(t)) return "int";
+      if (t === "Pup") return "float";
+      if (t === "Champ") return "int";
       if (t === "Moji") return "string";
       if (t === "Bit") return "bool";
       return t;
     }
 
-    compatible(expected, actual) {
+    compatible(expected, actual, warnNarrow) {
       if (expected === actual) return true;
-      if (expected === "int" && actual === "float") return true;
+      if (expected === "int" && actual === "float") {
+        if (warnNarrow) warnNarrow();
+        return true;
+      }
       if (expected === "float" && actual === "int") return true;
+      if (expected === "char" && actual === "int") return true;
+      if (expected === "int" && actual === "char") return true;
       return false;
     }
   }
@@ -1042,10 +1154,17 @@ const DotmonCompiler = (() => {
       if (this.needsString) this.output.push("#include <string.h>");
       if (this.needsStdbool) this.output.push("#include <stdbool.h>");
       this.output.push("");
+
+      // Emit function declarations before main
+      const funcDecls = ast.body.filter((s) => s.type === "FuncDecl");
+      const mainStmts = ast.body.filter((s) => s.type !== "FuncDecl");
+
+      for (const func of funcDecls) this.genFuncDecl(func);
+
       this.output.push("int main(void) {");
       this.indent = 1;
 
-      for (const stmt of ast.body) this.genStmt(stmt);
+      for (const stmt of mainStmts) this.genStmt(stmt);
 
       this.output.push("");
       this.emit("return 0;");
@@ -1069,6 +1188,7 @@ const DotmonCompiler = (() => {
         }
         if (s.type === "WhileLoop") this.scanIncludes(s.body);
         if (s.type === "ForLoop") this.scanIncludes(s.body);
+        if (s.type === "FuncDecl") this.scanIncludes(s.body);
       }
     }
 
@@ -1092,6 +1212,8 @@ const DotmonCompiler = (() => {
           return this.genWhileLoop(stmt);
         case "ForLoop":
           return this.genForLoop(stmt);
+        case "FuncDecl":
+          return this.genFuncDecl(stmt);
         case "ReturnStmt":
           return this.genReturn(stmt);
         case "BreakStmt":
@@ -1106,7 +1228,7 @@ const DotmonCompiler = (() => {
     genVarDecl(stmt) {
       const cType = this.mapType(stmt.varType);
       if (stmt.varType === "Moji") {
-        this.emit(`char ${stmt.name}[] = ${this.genExpr(stmt.init)};`);
+        this.emit(`char ${stmt.name}[256] = ${this.genExpr(stmt.init)};`);
       } else {
         this.emit(`${cType} ${stmt.name} = ${this.genExpr(stmt.init)};`);
       }
@@ -1152,7 +1274,13 @@ const DotmonCompiler = (() => {
     genAsk(stmt) {
       const varType = this.symbols[stmt.name];
       if (varType === "Moji") {
-        this.emit(`scanf("%99s", ${stmt.name});`);
+        this.emit(`scanf("%255s", ${stmt.name});`);
+      } else if (varType === "Pup") {
+        this.emit(`scanf("%f", &${stmt.name});`);
+      } else if (varType === "Rook") {
+        this.emit(`scanf("%ld", &${stmt.name});`);
+      } else if (varType === "Bit") {
+        this.emit(`scanf("%d", &${stmt.name});`);
       } else {
         this.emit(`scanf("%d", &${stmt.name});`);
       }
@@ -1175,6 +1303,22 @@ const DotmonCompiler = (() => {
       for (const s of stmt.body) this.genStmt(s);
       this.indent--;
       this.emit("}");
+    }
+
+    genFuncDecl(stmt) {
+      const retType = this.mapType(stmt.returnType);
+      const params = stmt.params
+        .map((p) => {
+          if (p.varType === "Moji") return `char ${p.name}[]`;
+          return `${this.mapType(p.varType)} ${p.name}`;
+        })
+        .join(", ");
+      this.emit(`${retType} ${stmt.name}(${params || "void"}) {`);
+      this.indent++;
+      for (const s of stmt.body) this.genStmt(s);
+      this.indent--;
+      this.emit("}");
+      this.output.push("");
     }
 
     genReturn(stmt) {
@@ -1209,11 +1353,12 @@ const DotmonCompiler = (() => {
       return (
         {
           Baby: "int",
-          Pup: "int",
+          Pup: "float",
           Rook: "long",
           Champ: "int",
           Moji: "char",
           Bit: "bool",
+          void: "void",
         }[t] || "int"
       );
     }
@@ -1223,10 +1368,13 @@ const DotmonCompiler = (() => {
       if (expr.type === "IntLiteral") return "%d";
       if (expr.type === "FloatLiteral") return "%f";
       if (expr.type === "BoolLiteral") return "%d";
+      if (expr.type === "CharLiteral") return "%c";
       if (expr.type === "Identifier") {
         const t = this.symbols[expr.name];
         if (t === "Moji") return "%s";
+        if (t === "Pup") return "%f";
         if (t === "Rook") return "%ld";
+        if (t === "Champ") return "%d";
         if (t === "Bit") return "%d";
         return "%d";
       }
@@ -1234,7 +1382,25 @@ const DotmonCompiler = (() => {
     }
 
     escC(s) {
-      return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      let result = "";
+      for (let i = 0; i < s.length; i++) {
+        if (s[i] === "\\" && i + 1 < s.length) {
+          const next = s[i + 1];
+          if ("ntr0\\\"'".includes(next)) {
+            result += "\\" + next;
+            i++;
+            continue;
+          }
+        }
+        if (s[i] === '"') {
+          result += '\\"';
+        } else if (s[i] === "%") {
+          result += "%%";
+        } else {
+          result += s[i];
+        }
+      }
+      return result;
     }
   }
 
@@ -1325,7 +1491,7 @@ const DotmonCompiler = (() => {
         r += `Ask(${node.name})\n`;
         break;
       case "WhileLoop":
-        r += "Loop\n";
+        r += "Spiral\n";
         r +=
           childPfx +
           "\u251C\u2500\u2500 cond: " +
@@ -1336,7 +1502,7 @@ const DotmonCompiler = (() => {
         });
         break;
       case "ForLoop":
-        r += "Spiral\n";
+        r += "Loop\n";
         r += astToString(node.init, childPfx, false);
         r +=
           childPfx +

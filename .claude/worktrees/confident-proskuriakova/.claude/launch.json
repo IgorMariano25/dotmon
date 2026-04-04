@@ -4,8 +4,8 @@
     {
       "name": "dotmon-ide",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "3456", "--directory", "E:/dotmon/ide"],
-      "port": 3456
+      "runtimeArgs": ["-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "port": 8000
     }
   ]
 }

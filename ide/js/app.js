@@ -535,27 +535,29 @@ Finish
     });
 
     // Async initialization: load files from API then render
-    initFileSystem().then(() => {
-      // Ensure defaults are loaded if filesystem is empty or file is missing
-      if (Object.keys(fileSystem).length === 0 || !fileSystem[currentFile]) {
-        fileSystem = { ...DEFAULT_FILES, ...fileSystem };
+    initFileSystem()
+      .then(() => {
+        // Ensure defaults are loaded if filesystem is empty or file is missing
+        if (Object.keys(fileSystem).length === 0 || !fileSystem[currentFile]) {
+          fileSystem = { ...DEFAULT_FILES, ...fileSystem };
+          saveFS();
+        }
+        renderEditor(currentFile);
+        doCompile(currentFile);
+        renderFileTree();
+        activateTab("src/main.mon");
+        editorReady = true;
+      })
+      .catch(() => {
+        // Absolute fallback
+        fileSystem = { ...DEFAULT_FILES };
         saveFS();
-      }
-      renderEditor(currentFile);
-      doCompile(currentFile);
-      renderFileTree();
-      activateTab("src/main.mon");
-      editorReady = true;
-    }).catch(() => {
-      // Absolute fallback
-      fileSystem = { ...DEFAULT_FILES };
-      saveFS();
-      renderEditor(currentFile);
-      doCompile(currentFile);
-      renderFileTree();
-      activateTab("src/main.mon");
-      editorReady = true;
-    });
+        renderEditor(currentFile);
+        doCompile(currentFile);
+        renderFileTree();
+        activateTab("src/main.mon");
+        editorReady = true;
+      });
 
     // ─── Diagnostics (real-time) ─────────────────────────────
     let currentDecorations = [];
@@ -600,9 +602,14 @@ Finish
     const lensStyleMap = {};
     function injectLensStyle(id, message, isError) {
       if (lensStyleMap[id]) lensStyleMap[id].remove();
-      const color = isError ? "rgba(241, 76, 76, 0.7)" : "rgba(204, 167, 0, 0.65)";
+      const color = isError
+        ? "rgba(241, 76, 76, 0.7)"
+        : "rgba(204, 167, 0, 0.65)";
       const symbol = isError ? "\u00D7" : "\u26A0";
-      const escaped = message.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/'/g, "\\'");
+      const escaped = message
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/'/g, "\\'");
       const style = document.createElement("style");
       style.textContent = `.${id}::after { content: "   ${symbol} ${escaped}"; color: ${color}; font-style: italic; font-size: 0.9em; opacity: 0.85; pointer-events: none; }`;
       document.head.appendChild(style);
@@ -632,7 +639,9 @@ Finish
             glyphMarginClassName: isError
               ? "dotmon-glyph-error"
               : "dotmon-glyph-warning",
-            glyphMarginHoverMessage: { value: `**${isError ? "Error" : "Warning"}:** ${d.message}` },
+            glyphMarginHoverMessage: {
+              value: `**${isError ? "Error" : "Warning"}:** ${d.message}`,
+            },
           },
         });
 
@@ -641,9 +650,7 @@ Finish
           range: new monaco.Range(line, 1, line, lineLength + 1),
           options: {
             isWholeLine: true,
-            className: isError
-              ? "dotmon-line-error"
-              : "dotmon-line-warning",
+            className: isError ? "dotmon-line-error" : "dotmon-line-warning",
             overviewRuler: {
               color: isError ? "#f14c4c" : "#cca700",
               position: monaco.editor.OverviewRulerLane.Full,
@@ -1165,6 +1172,45 @@ Finish
       });
     }
 
+    // Refresh button — reload files from backend
+    const refreshBtn = document.querySelector(
+      '.sidebar-action-btn[title="Atualizar"]',
+    );
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", async () => {
+        if (backendAvailable) {
+          try {
+            const project = await api.loadProject();
+            fileSystem = project;
+            if (project.__folders__) {
+              project.__folders__.forEach((f) => emptyFolders.add(f));
+              delete fileSystem.__folders__;
+            }
+            saveFS();
+            renderFileTree();
+            if (currentFile && fileSystem[currentFile]) {
+              mainEditor.setValue(fileSystem[currentFile]);
+            }
+            appendTerminalLine(
+              "terminal-success",
+              "[info] Projeto recarregado do backend",
+            );
+          } catch (_) {
+            appendTerminalLine(
+              "terminal-error",
+              "[error] Falha ao recarregar projeto",
+            );
+          }
+        } else {
+          renderFileTree();
+          appendTerminalLine(
+            "terminal-info",
+            "[info] Modo offline — file tree atualizada",
+          );
+        }
+      });
+    }
+
     // ─── Context Menu ────────────────────────────────────────
     const contextMenu = document.getElementById("contextMenu");
     const folderContextMenu = document.getElementById("folderContextMenu");
@@ -1418,6 +1464,11 @@ Finish
           "terminal-success",
           `[info] Arquivo salvo: ${currentFile}`,
         );
+        const autoCompileSetting =
+          document.getElementById("settingAutoCompile");
+        if (autoCompileSetting && autoCompileSetting.value === "on") {
+          doCompile(currentFile);
+        }
       }
     });
 
@@ -1584,11 +1635,41 @@ Finish
       // Connect WebSocket after short delay
       setTimeout(connectTerminalWs, 500);
 
+      // Terminal command history
+      const cmdHistory = [];
+      let historyIndex = -1;
+
       terminalInput.addEventListener("keydown", (e) => {
+        // Arrow Up — navigate history backward
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (cmdHistory.length === 0) return;
+          if (historyIndex < cmdHistory.length - 1) historyIndex++;
+          terminalInput.value =
+            cmdHistory[cmdHistory.length - 1 - historyIndex];
+          return;
+        }
+        // Arrow Down — navigate history forward
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (historyIndex > 0) {
+            historyIndex--;
+            terminalInput.value =
+              cmdHistory[cmdHistory.length - 1 - historyIndex];
+          } else {
+            historyIndex = -1;
+            terminalInput.value = "";
+          }
+          return;
+        }
         if (e.key !== "Enter") return;
         const cmd = terminalInput.value.trim();
         terminalInput.value = "";
         if (!cmd) return;
+
+        // Add to history
+        cmdHistory.push(cmd);
+        historyIndex = -1;
 
         appendTerminalPrompt(cmd);
 
@@ -1662,9 +1743,20 @@ Finish
     // ─── Activity Bar ────────────────────────────────────────
     const activityBtns = document.querySelectorAll(".activity-btn[data-panel]");
     const sidebar = document.getElementById("sidebar");
+    const sidebarTitle = document.querySelector(".sidebar-title");
+
+    const panelLabels = {
+      explorer: "EXPLORER",
+      search: "SEARCH",
+      structure: "STRUCTURE",
+      build: "BUILD",
+      debug: "DEBUG",
+      extensions: "EXTENSIONS",
+    };
 
     activityBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
+        const panel = btn.dataset.panel;
         const wasActive = btn.classList.contains("active");
         if (wasActive) {
           sidebar.style.display =
@@ -1674,6 +1766,9 @@ Finish
           activityBtns.forEach((b) => b.classList.remove("active"));
           btn.classList.add("active");
           sidebar.style.display = "";
+          if (sidebarTitle)
+            sidebarTitle.textContent =
+              panelLabels[panel] || panel.toUpperCase();
         }
         // Re-layout Monaco editors after sidebar toggle
         setTimeout(() => {
@@ -1798,6 +1893,78 @@ Finish
 
     document.getElementById("statusErrors").addEventListener("click", () => {
       panelTabBar.querySelector('[data-panel="errors"]').click();
+    });
+
+    // ─── Settings Panel ────────────────────────────────────
+    const settingsOverlay = document.getElementById("settingsOverlay");
+    const settingsClose = document.getElementById("settingsClose");
+    const settingFontSize = document.getElementById("settingFontSize");
+    const settingTabSize = document.getElementById("settingTabSize");
+    const settingWordWrap = document.getElementById("settingWordWrap");
+    const settingMinimap = document.getElementById("settingMinimap");
+    const settingAutoCompile = document.getElementById("settingAutoCompile");
+
+    // Load saved settings
+    const savedSettings = JSON.parse(
+      localStorage.getItem("dotmon-settings") || "{}",
+    );
+    if (savedSettings.fontSize) settingFontSize.value = savedSettings.fontSize;
+    if (savedSettings.tabSize) settingTabSize.value = savedSettings.tabSize;
+    if (savedSettings.wordWrap) settingWordWrap.value = savedSettings.wordWrap;
+    if (savedSettings.minimap) settingMinimap.value = savedSettings.minimap;
+    if (savedSettings.autoCompile)
+      settingAutoCompile.value = savedSettings.autoCompile;
+
+    function applySettings() {
+      const opts = {
+        fontSize: parseInt(settingFontSize.value, 10),
+        tabSize: parseInt(settingTabSize.value, 10),
+        wordWrap: settingWordWrap.value,
+        minimap: { enabled: settingMinimap.value === "on" },
+      };
+      mainEditor.updateOptions(opts);
+      cEditor.updateOptions({ fontSize: opts.fontSize, tabSize: opts.tabSize });
+      localStorage.setItem(
+        "dotmon-settings",
+        JSON.stringify({
+          fontSize: settingFontSize.value,
+          tabSize: settingTabSize.value,
+          wordWrap: settingWordWrap.value,
+          minimap: settingMinimap.value,
+          autoCompile: settingAutoCompile.value,
+        }),
+      );
+    }
+
+    // Apply on load
+    applySettings();
+
+    function openSettings() {
+      settingsOverlay.classList.add("visible");
+    }
+    function closeSettings() {
+      applySettings();
+      settingsOverlay.classList.remove("visible");
+    }
+
+    // Wire both settings buttons (titlebar + activity bar)
+    document.querySelectorAll('[title="Configuracoes"]').forEach((btn) => {
+      btn.addEventListener("click", openSettings);
+    });
+    settingsClose.addEventListener("click", closeSettings);
+    settingsOverlay.addEventListener("click", (e) => {
+      if (e.target === settingsOverlay) closeSettings();
+    });
+
+    // Apply on input change
+    [
+      settingFontSize,
+      settingTabSize,
+      settingWordWrap,
+      settingMinimap,
+      settingAutoCompile,
+    ].forEach((el) => {
+      el.addEventListener("change", applySettings);
     });
 
     // ─── Search in Titlebar ──────────────────────────────────

@@ -4,15 +4,30 @@
 #include <string.h>
 #include <stdbool.h>
 
+void evoluirNivel(int nivel) {
+    if (nivel <= 15) {
+        nivel = nivel + 10;
+        printf("Digimon evolui para o nível: \n");
+        printf("%d\n", nivel);
+        return nivel;
+    }
+    else {
+        printf("Seu digimon já está muito forte, não precisa de evolução\n");
+        return nivel;
+    }
+}
+
 int main(void) {
     int nivel = 15;
-    int experiencia = 5000;
-    char nome[] = "Agumon";
-    char evolucao[] = "Greymon";
-    bool pronto = true;
+    float experiencia = 5000;
+    char nome[256] = "Agumon";
+    char evolucao[256] = "Greymon";
+    bool prontoParaCombate = true;
     if (nivel > 15) {
         printf("Mega evolucao disponivel!\n");
         printf("%s\n", evolucao);
+        printf("Pronto para lutar: \n");
+        printf("%d\n", prontoParaCombate);
     }
     else if (nivel == 10) {
         printf("Evolucao padrao\n");
@@ -20,6 +35,9 @@ int main(void) {
     }
     else {
         printf("Nivel insuficiente\n");
+        prontoParaCombate = false;
+        printf("Pronto para lutar:\n");
+        printf("%d\n", prontoParaCombate);
     }
     int dano = experiencia * nivel;
     printf("%d\n", dano);

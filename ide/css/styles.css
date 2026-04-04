@@ -1580,63 +1580,153 @@ button {
 
 /* Gutter margin icons */
 .dotmon-glyph-error {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23f14c4c'/%3E%3Cpath d='M8 8l8 8M16 8l-8 8' stroke='%231e1e1e' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center center no-repeat;
-  background-size: 14px 14px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23f14c4c'/%3E%3Cpath d='M8 8l8 8M16 8l-8 8' stroke='%231e1e1e' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center center no-repeat;
+    background-size: 14px 14px;
 }
 
 .dotmon-glyph-warning {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' fill='%23cca700'/%3E%3Cpath d='M12 9v4M12 17h.01' stroke='%231e1e1e' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center center no-repeat;
-  background-size: 14px 14px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' fill='%23cca700'/%3E%3Cpath d='M12 9v4M12 17h.01' stroke='%231e1e1e' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center center no-repeat;
+    background-size: 14px 14px;
 }
 
 /* Line background highlight for errors/warnings */
 .dotmon-line-error {
-  background: rgba(241, 76, 76, 0.10) !important;
-  border-left: 3px solid #f14c4c !important;
+    background: rgba(241, 76, 76, 0.10) !important;
+    border-left: 3px solid #f14c4c !important;
 }
 
 .dotmon-line-warning {
-  background: rgba(204, 167, 0, 0.08) !important;
-  border-left: 3px solid #cca700 !important;
+    background: rgba(204, 167, 0, 0.08) !important;
+    border-left: 3px solid #cca700 !important;
 }
 
 /* Error Lens — inline messages at end of line */
 .dotmon-error-lens-error {
-  color: rgba(241, 76, 76, 0.8) !important;
-  font-style: italic;
-  font-size: 12px;
-  opacity: 0.85;
-  padding-left: 12px;
-  pointer-events: none;
+    color: rgba(241, 76, 76, 0.8) !important;
+    font-style: italic;
+    font-size: 12px;
+    opacity: 0.85;
+    padding-left: 12px;
+    pointer-events: none;
 }
 
 .dotmon-error-lens-warning {
-  color: rgba(204, 167, 0, 0.75) !important;
-  font-style: italic;
-  font-size: 12px;
-  opacity: 0.8;
-  padding-left: 12px;
-  pointer-events: none;
+    color: rgba(204, 167, 0, 0.75) !important;
+    font-style: italic;
+    font-size: 12px;
+    opacity: 0.8;
+    padding-left: 12px;
+    pointer-events: none;
 }
 
 /* Enhanced error panel items */
 .error-item {
-  transition: background 0.1s, border-left-color 0.1s;
-  border-left: 3px solid transparent;
+    transition: background 0.1s, border-left-color 0.1s;
+    border-left: 3px solid transparent;
 }
 
 .error-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-left-color: var(--accent-blue);
+    background: rgba(255, 255, 255, 0.05);
+    border-left-color: var(--accent-blue);
 }
 
 .error-item .error-item-message {
-  line-height: 1.45;
+    line-height: 1.45;
 }
 
 .error-item .error-item-location .file {
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+}
+
+/* =============================================================
+   Settings Overlay
+   ============================================================ */
+.settings-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-overlay.visible {
+    display: flex;
+}
+
+.settings-panel {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.settings-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-active);
+}
+
+.settings-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.settings-close:hover {
+    color: var(--text-active);
+}
+
+.settings-body {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.settings-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.settings-label {
+    font-size: 13px;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.settings-input {
+    background: var(--bg-editor);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 13px;
+    padding: 5px 8px;
+    width: 120px;
+    outline: none;
+}
+
+.settings-input:focus {
+    border-color: var(--accent-blue);
 }

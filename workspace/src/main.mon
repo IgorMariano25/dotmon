@@ -8,12 +8,25 @@ Start
     Pup experiencia = 5000;
     Moji nome = "Agumon";
     Moji evolucao = "Greymon";
-    Bit pronto = true;
+    Bit prontoParaCombate = true;
+
+    Xros evoluirNivel (nivel) {
+        Evo (nivel <= 15) {
+            nivel = nivel + 10;
+            Show("Digimon evolui para o nível: ", nivel);
+            Send nivel;
+        }
+        FailEvo {
+            Show("Seu digimon já está muito forte, não precisa de evolução" );
+            Send nivel;
+        }
+    }
 
     // Check evolution conditions
     Evo (nivel > 15) {
         Show("Mega evolucao disponivel!");
         Show(evolucao);
+        Show("Pronto para lutar: ", prontoParaCombate);
     }
     AltEvo (nivel == 10) {
         Show("Evolucao padrao");
@@ -21,6 +34,8 @@ Start
     }
     FailEvo {
         Show("Nivel insuficiente");
+        prontoParaCombate = false;
+        Show("Pronto para lutar:", prontoParaCombate );
     }
 
     // Battle calculation
