@@ -867,12 +867,8 @@ Finish
     }
 
     // ─── Compile Pipeline ────────────────────────────────────
-    function isMonFile(f) {
-      return f.endsWith(".mon");
-    }
-    function isCFile(f) {
-      return f.endsWith(".c");
-    }
+    function isMonFile(f) { return f.endsWith(".mon"); }
+    function isCFile(f) { return f.endsWith(".c"); }
 
     function doCompile(filename) {
       const source = fileSystem[filename];
@@ -985,9 +981,8 @@ Finish
       renderErrors(result.diagnostics);
 
       // Update AST panel
-      document.getElementById("astContent").textContent = result.ast
-        ? JSON.stringify(result.ast, null, 2)
-        : "No AST available";
+      document.getElementById("astContent").textContent =
+        result.ast ? JSON.stringify(result.ast, null, 2) : "No AST available";
 
       // Update markers
       setMonacoMarkers(result.diagnostics);
@@ -1029,10 +1024,7 @@ Finish
         lines.push({ cls, text: `${prefix} ${d.message} (line ${d.line})` });
       }
       if (result.dotmonCode) {
-        lines.push({
-          cls: "terminal-info",
-          text: `[info] Dotmon code generated`,
-        });
+        lines.push({ cls: "terminal-info", text: `[info] Dotmon code generated` });
       }
       const status = errCount > 0 ? "terminal-error" : "terminal-success";
       lines.push({
@@ -1408,9 +1400,7 @@ Finish
     }
 
     function createNewFile(parentFolder) {
-      const name = prompt(
-        "Nome do arquivo (ex: meuarquivo.mon ou meuarquivo.c):",
-      );
+      const name = prompt("Nome do arquivo (ex: meuarquivo.mon ou meuarquivo.c):");
       if (!name) return;
       const safeName = name.replace(/[^a-zA-Z0-9._\-]/g, "");
       if (!safeName) return;
