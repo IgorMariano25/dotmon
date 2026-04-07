@@ -708,6 +708,10 @@ Finish
         updateErrorBadge(0);
         return;
       }
+
+      // Skip real-time diagnostics for .c files (no diagnose-only mode for C)
+      if (isCFile(currentFile)) return;
+
       try {
         const result = DotmonCompiler.diagnose(source, currentFile);
 
@@ -863,21 +867,35 @@ Finish
     }
 
     // ─── Compile Pipeline ────────────────────────────────────
+    function isMonFile(f) {
+      return f.endsWith(".mon");
+    }
+    function isCFile(f) {
+      return f.endsWith(".c");
+    }
+
     function doCompile(filename) {
       const source = fileSystem[filename];
       if (!source) return;
 
+      if (isCFile(filename)) {
+        return doCompileC(filename, source);
+      }
+      return doCompileMon(filename, source);
+    }
+
+    // .mon → C
+    function doCompileMon(filename, source) {
       const startTime = performance.now();
       const result = DotmonCompiler.compile(source, filename);
       const elapsed = (performance.now() - startTime).toFixed(1);
 
       compiledResults[filename] = result;
 
-      // Update C editor
+      // Update output editor
       cEditor.setValue(result.cCode || "// Compilation failed");
       const cFileName = filename.replace("src/", "").replace(".mon", ".c");
-      document.querySelector(".panel-filename").textContent =
-        `generated/${cFileName}`;
+      updateOutputPanelLabel(`generated/${cFileName}`, "C Gerado");
 
       // Save generated C to backend
       if (backendAvailable && result.cCode) {
@@ -912,7 +930,7 @@ Finish
       });
       lines.push({
         cls: "terminal-info",
-        text: `[info] Compiling ${filename}...`,
+        text: `[info] Compiling ${filename} → C...`,
       });
       lines.push({
         cls: "terminal-info",
@@ -940,7 +958,7 @@ Finish
       });
       appendTerminalBlock(lines);
 
-      // Auto-switch panel: show errors if any, else show C output
+      // Auto-switch panel: show errors if any, else show output
       if (errCount > 0) {
         showErrorsPanel();
       } else {
@@ -948,6 +966,101 @@ Finish
       }
 
       return result;
+    }
+
+    // .c → Dotmon
+    function doCompileC(filename, source) {
+      const startTime = performance.now();
+      const result = CToDotmon.transpile(source, filename);
+      const elapsed = (performance.now() - startTime).toFixed(1);
+
+      compiledResults[filename] = result;
+
+      // Update output editor with generated Dotmon code
+      cEditor.setValue(result.dotmonCode || "// Transpilation failed");
+      const monFileName = filename.replace("src/", "").replace(".c", ".mon");
+      updateOutputPanelLabel(`generated/${monFileName}`, "Dotmon Gerado");
+
+      // Update error panel
+      renderErrors(result.diagnostics);
+
+      // Update AST panel
+      document.getElementById("astContent").textContent = result.ast
+        ? JSON.stringify(result.ast, null, 2)
+        : "No AST available";
+
+      // Update markers
+      setMonacoMarkers(result.diagnostics);
+
+      // Update status bar
+      const errCount = result.diagnostics.filter(
+        (d) => d.severity === "error",
+      ).length;
+      const warnCount = result.diagnostics.filter(
+        (d) => d.severity === "warning",
+      ).length;
+      updateStatusErrors(errCount, warnCount);
+      updateErrorBadge(errCount + warnCount);
+
+      // Terminal output
+      const lines = [];
+      lines.push({
+        cls: "terminal-info",
+        text: `[info] C → Dotmon transpiler v0.1.0`,
+      });
+      lines.push({
+        cls: "terminal-info",
+        text: `[info] Transpiling ${filename} → Dotmon...`,
+      });
+      lines.push({
+        cls: "terminal-info",
+        text: `[info] Lexical analysis: ${result.tokens.length} tokens`,
+      });
+      if (result.ast) {
+        lines.push({
+          cls: "terminal-info",
+          text: `[info] Syntax analysis: AST generated`,
+        });
+      }
+      for (const d of result.diagnostics) {
+        const cls =
+          d.severity === "error" ? "terminal-error" : "terminal-warning";
+        const prefix = d.severity === "error" ? "[error]" : "[warn]";
+        lines.push({ cls, text: `${prefix} ${d.message} (line ${d.line})` });
+      }
+      if (result.dotmonCode) {
+        lines.push({
+          cls: "terminal-info",
+          text: `[info] Dotmon code generated`,
+        });
+      }
+      const status = errCount > 0 ? "terminal-error" : "terminal-success";
+      lines.push({
+        cls: status,
+        text: `[done] Transpilation finished in ${elapsed}ms — ${errCount} error(s), ${warnCount} warning(s)`,
+      });
+      appendTerminalBlock(lines);
+
+      if (errCount > 0) {
+        showErrorsPanel();
+      } else {
+        showCOutputPanel();
+      }
+
+      return result;
+    }
+
+    function updateOutputPanelLabel(filenameText, tabLabel) {
+      const panelFilename = document.querySelector(".panel-filename");
+      if (panelFilename) panelFilename.textContent = filenameText;
+      const tabEl = document.querySelector('.panel-tab[data-panel="c-output"]');
+      if (tabEl) {
+        // Preserve the SVG icon, update only the text node
+        const textNode = Array.from(tabEl.childNodes).find(
+          (n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim(),
+        );
+        if (textNode) textNode.textContent = ` ${tabLabel} `;
+      }
     }
 
     function showCOutputPanel() {
@@ -979,7 +1092,7 @@ Finish
       const model = mainEditor.getModel();
       monaco.editor.setModelLanguage(
         model,
-        filename.endsWith(".mon") ? "dotmon" : "plaintext",
+        isMonFile(filename) ? "dotmon" : isCFile(filename) ? "c" : "plaintext",
       );
 
       // Breadcrumb
@@ -1000,18 +1113,34 @@ Finish
 
       // Update status bar language
       const langEl = document.querySelector(".statusbar-lang");
-      if (filename.endsWith(".mon")) {
+      if (isMonFile(filename)) {
         langEl.innerHTML =
           '<span class="file-icon mon-icon" style="font-size:9px;width:14px;height:14px;line-height:14px;">M</span> dotmon';
+      } else if (isCFile(filename)) {
+        langEl.innerHTML =
+          '<span class="file-icon" style="font-size:9px;width:14px;height:14px;line-height:14px;background:#005f9e;color:#fff;border-radius:3px;display:inline-block;text-align:center;">C</span> C';
       } else {
         langEl.textContent = filename.split(".").pop();
       }
 
-      // Restore compiled C code if exists
+      // Restore compiled output if exists
       if (compiledResults[filename]) {
-        cEditor.setValue(compiledResults[filename].cCode || "");
+        const r = compiledResults[filename];
+        cEditor.setValue(r.cCode || r.dotmonCode || "");
       } else {
-        cEditor.setValue('// Click "Compilar" or press Ctrl+B to compile');
+        const hint = isCFile(filename)
+          ? '// Click "Compilar" or press Ctrl+B to transpile to Dotmon'
+          : '// Click "Compilar" or press Ctrl+B to compile to C';
+        cEditor.setValue(hint);
+      }
+
+      // Update output panel label based on file type
+      if (isCFile(filename)) {
+        const monName = filename.replace("src/", "").replace(".c", ".mon");
+        updateOutputPanelLabel(`generated/${monName}`, "Dotmon Gerado");
+      } else {
+        const cName = filename.replace("src/", "").replace(".mon", ".c");
+        updateOutputPanelLabel(`generated/${cName}`, "C Gerado");
       }
 
       // Always run diagnostics for real-time errors/warnings
@@ -1279,19 +1408,25 @@ Finish
     }
 
     function createNewFile(parentFolder) {
-      const name = prompt("Nome do arquivo (ex: meuarquivo.mon):");
+      const name = prompt(
+        "Nome do arquivo (ex: meuarquivo.mon ou meuarquivo.c):",
+      );
       if (!name) return;
       const safeName = name.replace(/[^a-zA-Z0-9._\-]/g, "");
       if (!safeName) return;
-      const finalName = safeName.endsWith(".mon")
-        ? safeName
-        : safeName + ".mon";
+      const hasExt = safeName.endsWith(".mon") || safeName.endsWith(".c");
+      const finalName = hasExt ? safeName : safeName + ".mon";
       const path = `${parentFolder}/${finalName}`;
       if (fileSystem[path]) {
         alert("Arquivo ja existe!");
         return;
       }
-      const newContent = `// ${finalName}\n\nStart\n{\n    \n}\nFinish\n`;
+      let newContent;
+      if (finalName.endsWith(".c")) {
+        newContent = `#include <stdio.h>\n\nint main(void) {\n    \n    return 0;\n}\n`;
+      } else {
+        newContent = `// ${finalName}\n\nStart\n{\n    \n}\nFinish\n`;
+      }
       fileSystem[path] = newContent;
       // Remove parent from emptyFolders since it now has content
       emptyFolders.delete(parentFolder);
@@ -1344,7 +1479,7 @@ Finish
       importBtn.addEventListener("click", () => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = ".mon";
+        input.accept = ".mon,.c";
         input.multiple = true;
         input.onchange = (e) => {
           const files = Array.from(e.target.files);
@@ -1617,19 +1752,23 @@ Finish
       });
     });
 
-    // Export C button
+    // Export output button
     const exportBtns = document.querySelectorAll(
       '.panel-action-btn[title="Exportar .c"]',
     );
     exportBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        const cCode = cEditor.getValue();
-        if (!cCode || cCode.startsWith("//")) return;
-        const blob = new Blob([cCode], { type: "text/plain" });
+        const code = cEditor.getValue();
+        if (!code || code.startsWith("//")) return;
+        const blob = new Blob([code], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = currentFile.split("/").pop().replace(".mon", ".c");
+        if (isCFile(currentFile)) {
+          a.download = currentFile.split("/").pop().replace(".c", ".mon");
+        } else {
+          a.download = currentFile.split("/").pop().replace(".mon", ".c");
+        }
         a.click();
         URL.revokeObjectURL(url);
       });
@@ -1818,7 +1957,7 @@ Finish
         const arg = cmd.replace("dotmon compile", "").trim();
         if (arg === "all") {
           for (const f of Object.keys(fileSystem)) {
-            if (f.endsWith(".mon")) doCompile(f);
+            if (isMonFile(f) || isCFile(f)) doCompile(f);
           }
           renderFileTree();
           return;
