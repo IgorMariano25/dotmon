@@ -4,12 +4,30 @@
 #include <string.h>
 #include <stdbool.h>
 
+void evoluirNivel(int nivel) {
+    if (nivel <= 15) {
+        nivel = nivel + 10;
+        printf("Digimon evolui para o nível: \n");
+        printf("%d\n", nivel);
+        return nivel;
+    }
+    else {
+        printf("Seu digimon já está muito forte, não precisa de evolução\n");
+        return nivel;
+    }
+}
+
 int main(void) {
+    // Digimon Evolution System
+    // Main game logic for dotmon
+    // Define base stats
     int nivel = 15;
-    int experiencia = 5000;
-    char nome[] = "Agumon";
-    char evolucao[] = "Greymon";
+    long experiencia = 5000;
+    float forca = 27.49;
+    char nome[256] = "Agumon";
+    char evolucao[256] = "Greymon";
     bool prontoParaCombate = true;
+    // Check evolution conditions
     if (nivel > 15) {
         printf("Mega evolucao disponivel!\n");
         printf("%s\n", evolucao);
@@ -26,8 +44,10 @@ int main(void) {
         printf("Pronto para lutar:\n");
         printf("%d\n", prontoParaCombate);
     }
-    int dano = experiencia * nivel;
-    printf("%d\n", dano);
+    // Battle calculation
+    float dano = experiencia * nivel * forca;
+    printf("%f\n", dano);
+    // Display results
     printf("Batalha concluida!\n");
 
     return 0;

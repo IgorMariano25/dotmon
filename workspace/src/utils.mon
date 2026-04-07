@@ -13,7 +13,9 @@ Start
 
     // Status check
     Bit is_forte = true;
-    Evo (poder > 25) {
+    Bit is_high_level = true;
+    
+    Evo (poder > 25 && (is_forte || is_high_level)) {
         Show("Digimon forte!");
     }
     FailEvo {

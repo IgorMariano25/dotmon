@@ -4,9 +4,12 @@
 #include <string.h>
 
 int main(void) {
+    // Evolution System Module
+    // Manages Digimon evolution paths
     char digimon[256] = "Koromon";
     int stage = 1;
     float xp = 500;
+    // Evolution check
     if (xp > 1000) {
         stage = 4;
         strcpy(digimon, "WarGreymon");

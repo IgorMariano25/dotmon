@@ -4,16 +4,28 @@
 #include <string.h>
 
 int main(void) {
-    char atacante[] = "WarGreymon";
-    int ataque = 850;
+    // Battle System Module
+    // Handles combat logic between Digimons
+    // Attacker stats
+    char atacante[256] = "WarGreymon";
+    long ataque = 850;
     int velocidade = 120;
-    char defensor[] = "MetalGarurumon";
+    // Defender stats
+    char defensor[256] = "MetalGarurumon";
     int defesa = 780;
     int hp = 1200;
+    // Calculate damage
     int dano = ataque - defesa;
     if (dano > 0) {
         hp = hp - dano;
         printf("Dano causado!\n");
+        printf("%s\n", atacante);
+        printf("ofereceu dano de:\n");
+        printf("%d\n", dano);
+        printf("Velocidade do ataque foi de:\n");
+        printf("%d\n", velocidade);
+        printf("%s\n", defensor);
+        printf("sofreu dano de:\n");
         printf("%d\n", dano);
     }
     else {

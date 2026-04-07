@@ -4,7 +4,7 @@
 #include <string.h>
 
 int main(void) {
-    char name[] = "Tailmon";
+    char name[256] = "Tailmon";
     int contador = 1;
     while (contador < 3) {
         printf("%s\n", name);

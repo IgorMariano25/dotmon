@@ -1,0 +1,262 @@
+// ============================================================
+// DOTMON — Exemplo Completo da Linguagem
+// Demonstra todos os recursos: tipos, literais, operadores,
+// controle de fluxo, funcoes, loops, I/O e interoperabilidade
+// ============================================================
+
+Start {
+
+    // ─── 1. TIPOS DE DADOS E LITERAIS ──────────────────────
+
+    // Baby → int (estagio bebe)
+    Baby nivel = 10;
+    Baby vidas = 3;
+
+    // Pup → float (estagio filhote)
+    Pup experiencia = 1250.75;
+    Pup taxa = 0.85;
+
+    // Rook → long (estagio rookie)
+    Rook poder = 999999;
+
+    // Baby → int (ataque e defesa)
+    Baby ataque = 450;
+    Baby defesa = 380;
+
+    // Moji → string (cadeia de caracteres)
+    Moji nome = "Agumon";
+    Moji evolucao = "Greymon";
+    Moji status = "Ativo";
+
+    // Champ → bool (verdadeiro/falso)
+    Champ pronto = true;
+    Champ derrotado = false;
+
+    // Bit → char (literal de caractere)
+    Bit tipo = 'A';
+
+    // ─── 2. OPERADORES ARITMETICOS ─────────────────────────
+
+    // Soma
+    Baby danoTotal = ataque + 50;
+
+    // Subtracao
+    Baby danoLiquido = ataque - defesa;
+
+    // Multiplicacao
+    Baby poderFinal = ataque * nivel;
+
+    // Divisao
+    Pup media = experiencia / 2;
+
+    // ─── 3. OPERADORES DE COMPARACAO ────────────────────────
+
+    // Igual (==)
+    Champ mesmoNivel = nivel == 10;
+
+    // Diferente (!=)
+    Champ nivelDiferente = nivel != 5;
+
+    // Maior que (>)
+    Champ forte = ataque > 400;
+
+    // Menor que (<)
+    Champ fraco = defesa < 100;
+
+    // Maior ou igual (>=)
+    Champ veterano = nivel >= 10;
+
+    // Menor ou igual (<=)
+    Champ iniciante = nivel <= 3;
+
+    // ─── 4. OPERADORES LOGICOS ──────────────────────────────
+
+    // AND (&&)
+    Rook podeEvoluir = pronto && forte;
+
+    // OR (||)
+    Bit emPerigo = derrotado || fraco;
+
+    // Combinacao de logicos com comparacao
+    Champ elegivel = nivel >= 10 && experiencia > 1000 || pronto;
+
+    // ─── 5. ENTRADA E SAIDA (I/O) ──────────────────────────
+
+    // Ask → input (leitura do usuario)
+    Show("Digite o nome do seu Digimon:");
+    Ask(nome);
+    Show("Voce escolheu:");
+    Show(nome);
+
+    // Show → print/output
+    Show("=== Sistema DOTMON ===");
+    Show("Digimon:");
+    Show(nome);
+    Show("Nivel:");
+    Show(nivel);
+    Show("Experiencia:");
+    Show(experiencia);
+    Show("Poder total:");
+    Show(poder);
+    Show("Ataque:");
+    Show(ataque);
+    Show("Defesa:");
+    Show(defesa);
+    Show("Dano final:");
+    Show(danoTotal);
+    Show("Poder de combate:");
+    Show(poderFinal);
+
+    // ─── 6. CONTROLE DE FLUXO ──────────────────────────────
+
+    // Evo (if) / AltEvo (else if) / FailEvo (else)
+    Evo (nivel > 50) {
+        Show("Mega evolucao disponivel!");
+        evolucao = "WarGreymon";
+        Show(evolucao);
+    } AltEvo (nivel > 30) {
+        Show("Evolucao Ultimate!");
+        evolucao = "MetalGreymon";
+        Show(evolucao);
+    } AltEvo (nivel > 15) {
+        Show("Evolucao Champion!");
+        evolucao = "Greymon";
+        Show(evolucao);
+    } AltEvo (nivel == 10) {
+        Show("Evolucao padrao Rookie");
+        Show(nome);
+    } FailEvo {
+        Show("Nivel insuficiente para evoluir");
+    }
+
+    // Condicional com operadores logicos (&&)
+    Evo (pronto && ataque > 300) {
+        Show("Digimon pronto para batalha!");
+    } FailEvo {
+        Show("Digimon precisa treinar mais...");
+    }
+
+    // Condicional com operador OR (||)
+    Evo (derrotado || fraco) {
+        Show("Digimon precisa de cura!");
+    } FailEvo {
+        Show("Digimon em plena forma!");
+    }
+
+    // ─── 7. LOOPS (REPETICAO) ──────────────────────────────
+
+    // Loop → for (com init, condicao e step)
+    Show("--- Treinamento ---");
+    Loop (Baby i = 0; i < 5; i = i + 1) {
+        Show("Treinamento rodada:");
+        Show(i);
+    }
+
+    // Spiral → while
+    Show("--- Batalha em espiral ---");
+    Baby hp = 100;
+    Spiral (hp > 0) {
+        hp = hp - 25;
+        Show("HP restante:");
+        Show(hp);
+
+        // Jam → break (interrompe o loop)
+        Evo (hp <= 50) {
+            Show("HP Baixo!");
+        }
+        AltEvo(hp <= 25){
+            Show("HP Crítico!");
+        }
+        AltEvo(hp == 0 && vidas == 0){
+            Show("Seu digimon morreu para SEMPRE :(");
+        }
+        FailEvo {
+            vidas = vidas - 1;
+            Show("Seu digimon perdeu uma vida");
+        }
+    }
+
+    // Loop com Skip → continue (pula iteracao)
+    Show("--- Coleta de itens ---");
+    Loop (Baby j = 0; j < 10; j = j + 1) {
+        // Pula itens pares
+        Evo (j == 2) {
+            Skip;
+        }
+        Evo (j == 4) {
+            Skip;
+        }
+        Evo (j == 6) {
+            Skip;
+        }
+        Evo (j == 8) {
+            Skip;
+        }
+        Show("Item coletado:");
+        Show(j);
+    }
+
+    // ─── 8. FUNCOES (Xros / Send / Call) ────────────────────
+
+    // Xros → declaracao de funcao com tipo de retorno
+    Xros Baby calcularDano(Baby atk, Baby def) {
+        Baby resultado = atk - def;
+        Evo (resultado < 0) {
+            resultado = 0;
+        }
+        // Send → return
+        Send resultado;
+    }
+
+    Xros Pup calcularXP(Baby nivel, Pup base) {
+        Pup xp = base * nivel;
+        Send xp;
+    }
+
+    // Funcao sem retorno (void)
+    Xros exibirStatus(Moji nomeDigimon, Baby nivelAtual, Pup xpAtual) {
+        Show("=== Status do Digimon ===");
+        Show(nomeDigimon);
+        Show("Nivel:");
+        Show(nivelAtual);
+        Show("XP:");
+        Show(xpAtual);
+        Show("=========================");
+    }
+
+    // Call → chamada de funcao
+    Call calcularDano(ataque, defesa);
+    Call calcularXP(nivel, experiencia);
+    Call exibirStatus(nome, nivel, experiencia);
+
+    // ─── 9. INTEROPERABILIDADE ──────────────────────────────
+
+    // World → import (escopo global / modulo externo)
+    // World batalha;
+
+    // Core → acesso a hardware
+    // Core sensor;
+
+    // ─── 10. EXPRESSOES COMPOSTAS ───────────────────────────
+
+    // Operacoes encadeadas
+    Baby combo = ataque * 2 + defesa - 100;
+    Pup bonus = experiencia * taxa + 500;
+
+    // Comparacoes com logica complexa
+    Evo (combo > 500 && bonus > 1000) {
+        Show("Combo devastador!");
+        Show(combo);
+    } AltEvo (combo > 200 || bonus > 500) {
+        Show("Combo razoavel");
+        Show(combo);
+    } FailEvo {
+        Show("Combo fraco");
+    }
+
+    // ─── FIM ────────────────────────────────────────────────
+    Show("=== Programa DOTMON finalizado ===");
+    Show("Digivolucao completa!");
+
+} 
+Finish

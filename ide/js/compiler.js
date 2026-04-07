@@ -47,6 +47,8 @@ const DotmonCompiler = (() => {
     OP_LT: "OP_LT",
     OP_GE: "OP_GE",
     OP_LE: "OP_LE",
+    OP_AND: "OP_AND",
+    OP_OR: "OP_OR",
     LPAREN: "LPAREN",
     RPAREN: "RPAREN",
     LBRACE: "LBRACE",
@@ -158,6 +160,10 @@ const DotmonCompiler = (() => {
           return this.addToken(TT.OP_MUL);
         case "/":
           return this.addToken(TT.OP_DIV);
+        case "&":
+          return this.addToken(this.match("&") ? TT.OP_AND : TT.INVALID);
+        case "|":
+          return this.addToken(this.match("|") ? TT.OP_OR : TT.INVALID);
         case "=":
           return this.addToken(this.match("=") ? TT.OP_EQ : TT.OP_ASSIGN);
         case "!":
@@ -666,7 +672,41 @@ const DotmonCompiler = (() => {
 
     // ─── Expression Parsing ────────────────────────────────
     expression() {
-      return this.comparison();
+      return this.logicalOr();
+    }
+
+    logicalOr() {
+      let left = this.logicalAnd();
+      while (this.checkAny([TT.OP_OR])) {
+        const op = this.advance();
+        const right = this.logicalAnd();
+        left = {
+          type: "BinaryExpr",
+          op: op.lexeme,
+          left,
+          right,
+          line: op.line,
+          column: op.column,
+        };
+      }
+      return left;
+    }
+
+    logicalAnd() {
+      let left = this.comparison();
+      while (this.checkAny([TT.OP_AND])) {
+        const op = this.advance();
+        const right = this.comparison();
+        left = {
+          type: "BinaryExpr",
+          op: op.lexeme,
+          left,
+          right,
+          line: op.line,
+          column: op.column,
+        };
+      }
+      return left;
     }
 
     comparison() {
@@ -1146,7 +1186,7 @@ const DotmonCompiler = (() => {
         case "BinaryExpr": {
           const lt = this.visitExpr(expr.left);
           const rt = this.visitExpr(expr.right);
-          if (["==", "!=", ">", "<", ">=", "<="].includes(expr.op))
+          if (["==", "!=", ">", "<", ">=", "<=", "&&", "||"].includes(expr.op))
             return "bool";
           if (lt === "string" || rt === "string") {
             this.addDiag(
@@ -1187,9 +1227,9 @@ const DotmonCompiler = (() => {
     dotmonToInternal(t) {
       if (["Baby", "Rook"].includes(t)) return "int";
       if (t === "Pup") return "float";
-      if (t === "Champ") return "int";
+      if (t === "Champ") return "bool";
       if (t === "Moji") return "string";
-      if (t === "Bit") return "bool";
+      if (t === "Bit") return "char";
       return t;
     }
 
@@ -1252,7 +1292,7 @@ const DotmonCompiler = (() => {
     scanIncludes(stmts) {
       for (const s of stmts) {
         if (s.type === "VarDecl") {
-          if (s.varType === "Bit") this.needsStdbool = true;
+          if (s.varType === "Champ") this.needsStdbool = true;
           if (s.varType === "Moji") this.needsString = true;
         }
         if (s.type === "Assignment" && this.symbols[s.name] === "Moji")
@@ -1365,8 +1405,10 @@ const DotmonCompiler = (() => {
         this.emit(`scanf("%f", &${stmt.name});`);
       } else if (varType === "Rook") {
         this.emit(`scanf("%ld", &${stmt.name});`);
-      } else if (varType === "Bit") {
+      } else if (varType === "Champ") {
         this.emit(`scanf("%d", &${stmt.name});`);
+      } else if (varType === "Bit") {
+        this.emit(`scanf(" %c", &${stmt.name});`);
       } else {
         this.emit(`scanf("%d", &${stmt.name});`);
       }
@@ -1441,9 +1483,9 @@ const DotmonCompiler = (() => {
           Baby: "int",
           Pup: "float",
           Rook: "long",
-          Champ: "int",
+          Champ: "bool",
           Moji: "char",
-          Bit: "bool",
+          Bit: "char",
           void: "void",
         }[t] || "int"
       );
@@ -1461,7 +1503,7 @@ const DotmonCompiler = (() => {
         if (t === "Pup") return "%f";
         if (t === "Rook") return "%ld";
         if (t === "Champ") return "%d";
-        if (t === "Bit") return "%d";
+        if (t === "Bit") return "%c";
         return "%d";
       }
       return "%d";
@@ -1669,6 +1711,56 @@ const DotmonCompiler = (() => {
     return result;
   }
 
+  /**
+   * Diagnostics only: lexer + parser + analyzer (no C codegen).
+   * Used for real-time error/warning display while typing.
+   */
+  function diagnose(source, filename) {
+    const result = {
+      tokens: [],
+      ast: null,
+      diagnostics: [],
+      astString: "",
+      filename: filename || "unknown.mon",
+    };
+
+    const lexer = new Lexer(source);
+    result.tokens = lexer.tokenize();
+
+    for (const t of result.tokens) {
+      if (t.type === TT.INVALID) {
+        result.diagnostics.push({
+          severity: "error",
+          message: `Token invalido: '${t.lexeme}'`,
+          line: t.line,
+          column: t.column,
+          endColumn: t.column + t.lexeme.length,
+        });
+      }
+    }
+
+    try {
+      const parser = new Parser(result.tokens);
+      result.ast = parser.parse();
+    } catch (e) {
+      result.diagnostics.push({
+        severity: "error",
+        message: e.message,
+        line: e.line || 1,
+        column: e.column || 1,
+        endColumn: (e.column || 1) + 10,
+      });
+      result.astString = `Parse Error: ${e.message}`;
+      return result;
+    }
+
+    const analyzer = new Analyzer();
+    result.diagnostics.push(...analyzer.analyze(result.ast));
+
+    result.astString = astToString(result.ast);
+    return result;
+  }
+
   function tokenize(source) {
     return new Lexer(source).tokenize();
   }
@@ -1678,6 +1770,7 @@ const DotmonCompiler = (() => {
     KEYWORDS,
     TYPE_TOKENS,
     compile,
+    diagnose,
     tokenize,
     Lexer,
     Parser,

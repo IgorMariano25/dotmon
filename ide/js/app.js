@@ -663,7 +663,7 @@ Finish
       saveFileToBackend(currentFile);
       markTabModified(currentFile, true);
       clearTimeout(diagnosticTimer);
-      diagnosticTimer = setTimeout(() => runDiagnostics(), 500);
+      diagnosticTimer = setTimeout(() => runDiagnostics(), 200);
     });
 
     mainEditor.onDidChangeCursorPosition((e) => {
@@ -703,14 +703,60 @@ Finish
       if (!source.trim()) {
         monaco.editor.setModelMarkers(mainEditor.getModel(), "dotmon", []);
         clearDiagnosticDecorations();
+        renderErrors([]);
+        updateStatusErrors(0, 0);
+        updateErrorBadge(0);
         return;
       }
       try {
-        const result = DotmonCompiler.compile(source, currentFile);
+        const result = DotmonCompiler.diagnose(source, currentFile);
+
+        // Update markers and error panel
         setMonacoMarkers(result.diagnostics);
+        renderErrors(result.diagnostics);
+
+        // Update AST panel
+        const astEl = document.getElementById("astContent");
+        if (astEl) astEl.textContent = result.astString || "No AST available";
+
+        const errCount = result.diagnostics.filter(
+          (d) => d.severity === "error",
+        ).length;
+        const warnCount = result.diagnostics.filter(
+          (d) => d.severity === "warning",
+        ).length;
+        updateStatusErrors(errCount, warnCount);
+        updateErrorBadge(errCount + warnCount);
+
+        // Auto-switch to Errors panel when problems are detected
+        if (errCount + warnCount > 0) {
+          showErrorsPanel();
+        }
       } catch (_) {
-        /* silent */
+        monaco.editor.setModelMarkers(mainEditor.getModel(), "dotmon", []);
+        clearDiagnosticDecorations();
+        renderErrors([]);
+        updateStatusErrors(0, 0);
+        updateErrorBadge(0);
       }
+    }
+
+    function showErrorsPanel() {
+      const tabBar = document.querySelector(".panel-tab-bar");
+      if (!tabBar) return;
+      const errorsTab = tabBar.querySelector('[data-panel="errors"]');
+      if (!errorsTab || errorsTab.classList.contains("active")) return;
+      tabBar
+        .querySelectorAll(".panel-tab")
+        .forEach((t) => t.classList.remove("active"));
+      errorsTab.classList.add("active");
+      const panels = {
+        "c-output": document.getElementById("panelCOutput"),
+        errors: document.getElementById("panelErrors"),
+        ast: document.getElementById("panelAst"),
+      };
+      Object.values(panels).forEach((p) => p.classList.remove("active"));
+      panels.errors.classList.add("active");
     }
 
     function setMonacoMarkers(diagnostics) {
@@ -760,6 +806,7 @@ Finish
     }
 
     function applyDiagnosticDecorations(diagnostics) {
+      clearLensStyles();
       const decorations = [];
       for (const d of diagnostics) {
         const isError = d.severity === "error";
@@ -893,7 +940,33 @@ Finish
       });
       appendTerminalBlock(lines);
 
+      // Auto-switch panel: show errors if any, else show C output
+      if (errCount > 0) {
+        showErrorsPanel();
+      } else {
+        showCOutputPanel();
+      }
+
       return result;
+    }
+
+    function showCOutputPanel() {
+      const tabBar = document.querySelector(".panel-tab-bar");
+      if (!tabBar) return;
+      const cTab = tabBar.querySelector('[data-panel="c-output"]');
+      if (!cTab || cTab.classList.contains("active")) return;
+      tabBar
+        .querySelectorAll(".panel-tab")
+        .forEach((t) => t.classList.remove("active"));
+      cTab.classList.add("active");
+      const panels = {
+        "c-output": document.getElementById("panelCOutput"),
+        errors: document.getElementById("panelErrors"),
+        ast: document.getElementById("panelAst"),
+      };
+      Object.values(panels).forEach((p) => p.classList.remove("active"));
+      panels["c-output"].classList.add("active");
+      setTimeout(() => cEditor.layout(), 50);
     }
 
     // ─── Render Editor ───────────────────────────────────────
@@ -934,19 +1007,15 @@ Finish
         langEl.textContent = filename.split(".").pop();
       }
 
-      // Restore compiled result if exists
+      // Restore compiled C code if exists
       if (compiledResults[filename]) {
         cEditor.setValue(compiledResults[filename].cCode || "");
-        renderErrors(compiledResults[filename].diagnostics || []);
-        document.getElementById("astContent").textContent =
-          compiledResults[filename].astString || "";
-        setMonacoMarkers(compiledResults[filename].diagnostics || []);
       } else {
         cEditor.setValue('// Click "Compilar" or press Ctrl+B to compile');
-        renderErrors([]);
-        clearDiagnosticDecorations();
-        document.getElementById("astContent").textContent = "";
       }
+
+      // Always run diagnostics for real-time errors/warnings
+      runDiagnostics();
     }
 
     // ─── Error Panel ─────────────────────────────────────────

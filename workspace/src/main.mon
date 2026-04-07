@@ -7,9 +7,9 @@ Start
     Baby nivel = 15;
     Rook experiencia = 5000;
     Pup forca = 27.49;
-    Moji nome = "Agumon";
+        Moji nome = "Agumon";
     Moji evolucao = "Greymon";
-    Bit prontoParaCombate = true;
+    Champ prontoParaCombate = true;
 
     Xros evoluirNivel (nivel) {
         Evo (nivel <= 15) {
