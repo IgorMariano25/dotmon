@@ -120,6 +120,33 @@
     font-size: 15px;
     max-width: 760px;
   }
+  .page-note {
+    margin-top: 18px;
+    padding: 14px 18px;
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.28);
+    border-left: 3px solid var(--color-warning);
+    border-radius: var(--border-radius-sm);
+    color: var(--color-text-muted);
+    font-size: 13.5px;
+    line-height: 1.6;
+    max-width: 880px;
+  }
+  .page-note strong { color: var(--color-text); }
+  .page-note code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgba(255,255,255,0.05);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .page-note a {
+    color: var(--color-accent-2);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(78,201,176,0.35);
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .page-note a:hover { color: #7fdcc4; border-bottom-color: #7fdcc4; }
   .frame-block {
     margin-bottom: 64px;
     scroll-margin-top: 24px;
@@ -210,7 +237,12 @@
   <main class="content" id="top">
     <header class="page-header">
       <h1>Storyboard Completo · dotmon IDE</h1>
-      <p class="page-sub">Compilação navegável de todos os frames do storyboard do frontend da dotmon IDE. Cada frame é apresentado em ordem numérica, acompanhado de uma breve descrição do que está sendo demonstrado. Use a barra lateral para saltar rapidamente entre cenas.</p>
+      <p class="page-sub">Compilação navegável dos frames do storyboard do frontend da dotmon IDE. Cada frame é apresentado em ordem numérica, acompanhado de uma breve descrição do que está sendo demonstrado. Use a barra lateral para saltar rapidamente entre cenas.</p>
+      <div class="page-note" role="note">
+        <strong>Nota:</strong> esta página reúne apenas os <strong>frames principais</strong> selecionados como representativos da experiência da IDE. O storyboard completo descrito em <code>dotmon-ide-storyboard.md</code> contém um total de <strong>36 frames</strong>, distribuídos em 8 atos cobrindo onboarding, navegação, edição assistida, ciclo de compilação direta e reversa, terminal, painéis auxiliares, configurações e modo offline.
+        <br><br>
+        Para visualizar <strong>todos os 36 frames em formato de texto</strong>, acesse o documento completo no repositório neste: <a href="https://github.com/IgorMariano25/dotmon/blob/C-to-Dotmon/Storyboards/dotmon-ide-storyboard.md" target="_blank" rel="noopener noreferrer">link</a>.
+      </div>
     </header>
     <section class="frame-block" id="frame-01">
       <div class="frame-head">
