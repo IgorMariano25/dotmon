@@ -1,0 +1,65 @@
+<div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 14px;">
+  <div style="background: #0f0f0f; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; font-family: var(--font-sans); color: #d4d4d4; font-size: 12px;">
+    <div style="background: #1e1e1e; height: 30px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid #2d2d30; gap: 12px;">
+      <div style="display: flex; gap: 6px;">
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #ff5f57;"></span>
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #febc2e;"></span>
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #28c840;"></span>
+      </div>
+      <div style="flex: 1; text-align: center; color: #9ca3af; font-size: 11px;">main.mon — dotmon IDE</div>
+      <div style="width: 100px;"></div>
+    </div>
+    <div style="background: #1e1e1e; padding: 8px 12px; border-bottom: 1px solid #2d2d30; font-family: var(--font-mono); font-size: 10px; color: #6b7280; min-height: 80px; display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+      <div style="opacity: 0.6;">// editor reduzido — foco no terminal abaixo</div>
+      <div style="opacity: 0.4;"><span style="color: #c586c0;">Start</span> { <span style="color: #dcdcaa;">Show</span>(<span style="color: #ce9178;">"Olá"</span>); } <span style="color: #c586c0;">Finish</span></div>
+    </div>
+    <div style="background: #1a1a1a; border-top: 2px solid #0e7490; flex: 1; display: flex; flex-direction: column; min-height: 340px;">
+      <div style="display: flex; border-bottom: 1px solid #2d2d30; font-size: 11px; background: #161616;">
+        <div style="padding: 6px 12px; color: #d4d4d4; border-bottom: 2px solid #0e7490; display: flex; align-items: center; gap: 5px;">
+          <i class="ti ti-terminal-2" style="font-size: 13px;" aria-hidden="true"></i>Terminal
+        </div>
+        <div style="padding: 6px 12px; color: #6b7280;">Output</div>
+        <div style="padding: 6px 12px; color: #6b7280;">Build</div>
+        <div style="padding: 6px 12px; color: #6b7280;">Debug</div>
+        <div style="flex: 1;"></div>
+        <div style="padding: 6px 12px; color: #6b7280; display: flex; gap: 10px;">
+          <i class="ti ti-plus" aria-hidden="true"></i>
+          <i class="ti ti-trash" aria-hidden="true"></i>
+          <i class="ti ti-arrows-diagonal" aria-hidden="true"></i>
+        </div>
+      </div>
+      <div style="padding: 12px 14px; font-family: var(--font-mono); font-size: 11px; line-height: 1.7; flex: 1; overflow-y: auto;">
+        <div><span style="color: #4ec9b0;">dotmon@project</span><span style="color: #d4d4d4;">:</span><span style="color: #569cd6;">~/dotmon-project</span><span style="color: #d4d4d4;">$</span> help</div>
+        <div style="color: #9cdcfe; margin: 2px 0;">[info] Comandos disponíveis: <span style="color: #6b7280; font-size: 10px;">(use ↑↓ para histórico)</span></div>
+        <div style="margin: 8px 0;">
+          <div><span style="color: #4ec9b0;">dotmon@project</span><span style="color: #d4d4d4;">:</span><span style="color: #569cd6;">~/dotmon-project</span><span style="color: #d4d4d4;">$</span> ls</div>
+        </div>
+        <div style="margin-left: 0; color: #d4d4d4; line-height: 1.7;">
+          <div><span style="color: #569cd6;"><i class="ti ti-folder" style="font-size: 11px; vertical-align: -1px;" aria-hidden="true"></i> src/</span></div>
+          <div>&nbsp;&nbsp;<span style="color: #6b7280;">├──</span> <span style="color: #f59e0b;">main.mon</span> <span style="color: #6b7280; font-size: 10px;">412 B</span></div>
+          <div>&nbsp;&nbsp;<span style="color: #6b7280;">├──</span> <span style="color: #f59e0b;">helpers.mon</span> <span style="color: #6b7280; font-size: 10px;">218 B</span></div>
+          <div>&nbsp;&nbsp;<span style="color: #6b7280;">└──</span> <span style="color: #569cd6;">combat/</span></div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #6b7280;">└──</span> <span style="color: #f59e0b;">battle.mon</span> <span style="color: #6b7280; font-size: 10px;">186 B</span></div>
+          <div><span style="color: #569cd6;"><i class="ti ti-folder" style="font-size: 11px; vertical-align: -1px;" aria-hidden="true"></i> generated/</span></div>
+          <div>&nbsp;&nbsp;<span style="color: #6b7280;">└──</span> <span style="color: #3b82f6;">main.c</span> <span style="color: #6b7280; font-size: 10px;">412 B</span></div>
+          <div><span style="color: #569cd6;"><i class="ti ti-folder" style="font-size: 11px; vertical-align: -1px;" aria-hidden="true"></i> config/</span></div>
+          <div><span style="color: #d4d4d4;">README.md</span></div>
+        </div>
+        <div style="margin-top: 10px;">
+          <div><span style="color: #6b7280;">[muted]</span> <span style="color: #6b7280;">7 entries · streamed via</span> <span style="color: #4ec9b0; font-size: 10px;">ws://localhost:8000/ws/terminal</span></div>
+        </div>
+        <div style="margin-top: 8px;">
+          <span style="color: #4ec9b0;">dotmon@project</span><span style="color: #d4d4d4;">:</span><span style="color: #569cd6;">~/dotmon-project</span><span style="color: #d4d4d4;">$</span> cat src/main.mon<span style="display: inline-block; width: 7px; height: 13px; background: #d4d4d4; vertical-align: -2px; margin-left: 2px;"></span>
+        </div>
+      </div>
+    </div>
+    <div style="background: #0e7490; padding: 4px 12px; display: flex; gap: 14px; font-size: 10px; color: #e0f2fe; align-items: center;">
+      <span><i class="ti ti-git-branch" aria-hidden="true"></i> main</span>
+      <span>⨯ 0  ⚠ 0</span>
+      <span style="flex: 1;"></span>
+      <span style="display: flex; align-items: center; gap: 4px;"><i class="ti ti-plug-connected" style="font-size: 11px;" aria-hidden="true"></i>ws connected</span>
+      <span>dotmon</span>
+      <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.3);"></span>API</span>
+    </div>
+  </div>
+</div>

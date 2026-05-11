@@ -1,0 +1,75 @@
+<div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 14px;">
+  <div style="background: #0f0f0f; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; font-family: var(--font-sans); color: #d4d4d4; font-size: 12px;">
+    <div style="background: #1e1e1e; height: 30px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid #2d2d30; gap: 12px;">
+      <div style="display: flex; gap: 6px;">
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #ff5f57;"></span>
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #febc2e;"></span>
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #28c840;"></span>
+      </div>
+      <div style="flex: 1; text-align: center; color: #9ca3af; font-size: 11px;">main.mon — dotmon IDE</div>
+      <div style="width: 100px;"></div>
+    </div>
+    <div style="display: flex; min-height: 340px; position: relative;">
+      <div style="background: #1a1a1a; width: 38px; display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 14px; border-right: 1px solid #2d2d30; position: relative;">
+        <div style="position: absolute; left: 0; top: 6px; width: 2px; height: 22px; background: #0e7490;"></div>
+        <i class="ti ti-files" style="color: #d4d4d4; font-size: 17px;" aria-hidden="true"></i>
+        <i class="ti ti-search" style="color: #6b7280; font-size: 17px;" aria-hidden="true"></i>
+        <i class="ti ti-list-tree" style="color: #6b7280; font-size: 17px;" aria-hidden="true"></i>
+        <i class="ti ti-hammer" style="color: #6b7280; font-size: 17px;" aria-hidden="true"></i>
+      </div>
+      <div style="background: #1e1e1e; width: 200px; border-right: 1px solid #2d2d30; padding: 6px 4px; font-size: 11px; position: relative;">
+        <div style="padding: 4px 8px; color: #9ca3af; font-size: 9px; letter-spacing: 0.08em;">EXPLORER</div>
+        <div style="padding: 2px 8px; color: #d4d4d4; font-weight: 500; font-size: 10px;"><i class="ti ti-chevron-down" style="font-size: 11px;" aria-hidden="true"></i> dotmon-project</div>
+        <div style="padding: 2px 8px 2px 14px; color: #d4d4d4;"><i class="ti ti-chevron-down" style="font-size: 11px;" aria-hidden="true"></i> src</div>
+        <div style="padding: 2px 8px 2px 26px; color: #d4d4d4; display: flex; align-items: center; gap: 6px;">
+          <span style="width: 14px; height: 14px; background: #f59e0b; color: #1a1a1a; font-size: 9px; font-weight: 500; text-align: center; line-height: 14px; border-radius: 2px;">M</span>main.mon
+        </div>
+        <div style="padding: 2px 8px 2px 26px; color: #d4d4d4; background: rgba(14,116,144,0.25); border: 1px solid rgba(14,116,144,0.6); border-radius: 3px; display: flex; align-items: center; gap: 6px;">
+          <span style="width: 14px; height: 14px; background: #f59e0b; color: #1a1a1a; font-size: 9px; font-weight: 500; text-align: center; line-height: 14px; border-radius: 2px;">M</span>utils.mon
+        </div>
+        <div style="padding: 2px 8px 2px 14px; color: #9ca3af;"><i class="ti ti-chevron-right" style="font-size: 11px;" aria-hidden="true"></i> generated</div>
+        <div style="padding: 2px 8px 2px 14px; color: #9ca3af;"><i class="ti ti-chevron-right" style="font-size: 11px;" aria-hidden="true"></i> config</div>
+        <div style="position: absolute; left: 180px; top: 70px; background: #252526; border: 1px solid #454545; border-radius: 5px; min-width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,0.55); font-size: 11px; padding: 4px 0; z-index: 5;">
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <i class="ti ti-file-plus" style="color: #9ca3af; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Novo arquivo .mon</span>
+          </div>
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <i class="ti ti-folder-plus" style="color: #9ca3af; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Nova pasta</span>
+          </div>
+          <div style="height: 1px; background: #454545; margin: 4px 0;"></div>
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; background: #094771; border-left: 2px solid #0e7490; cursor: pointer;">
+            <i class="ti ti-edit" style="color: #d4d4d4; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Renomear</span><span style="color: #6b7280; font-family: var(--font-mono); font-size: 10px;">F2</span>
+          </div>
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <i class="ti ti-copy" style="color: #9ca3af; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Duplicar</span>
+          </div>
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <i class="ti ti-trash" style="color: #ef4444; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Excluir</span><span style="color: #6b7280; font-family: var(--font-mono); font-size: 10px;">Del</span>
+          </div>
+          <div style="height: 1px; background: #454545; margin: 4px 0;"></div>
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <i class="ti ti-player-play" style="color: #4ec9b0; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Compilar</span><span style="color: #6b7280; font-family: var(--font-mono); font-size: 10px;">^B</span>
+          </div>
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <i class="ti ti-file-code" style="color: #9ca3af; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Gerar C</span>
+          </div>
+          <div style="padding: 5px 12px; color: #d4d4d4; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <i class="ti ti-external-link" style="color: #9ca3af; font-size: 13px;" aria-hidden="true"></i><span style="flex: 1;">Revelar no sistema</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex: 1; background: #1e1e1e; font-family: var(--font-mono); font-size: 11px; padding: 12px 0; line-height: 1.7;">
+        <div style="display: flex;"><span style="display: inline-block; width: 26px; text-align: right; padding-right: 8px; color: #4b5563;">1</span><span><span style="color: #c586c0;">Start</span> {</span></div>
+        <div style="display: flex;"><span style="display: inline-block; width: 26px; text-align: right; padding-right: 8px; color: #4b5563;">2</span><span>&nbsp;&nbsp;<span style="color: #dcdcaa;">Show</span>(<span style="color: #ce9178;">"Olá Digimon"</span>);</span></div>
+        <div style="display: flex;"><span style="display: inline-block; width: 26px; text-align: right; padding-right: 8px; color: #4b5563;">3</span><span>} <span style="color: #c586c0;">Finish</span></span></div>
+      </div>
+    </div>
+    <div style="background: #0e7490; padding: 4px 12px; display: flex; gap: 14px; font-size: 10px; color: #e0f2fe;">
+      <span><i class="ti ti-git-branch" aria-hidden="true"></i> main</span>
+      <span>⨯ 0  ⚠ 0</span>
+      <span style="flex: 1;"></span>
+      <span>dotmon</span>
+      <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981;"></span>API</span>
+    </div>
+  </div>
+</div>
