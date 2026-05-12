@@ -1,0 +1,88 @@
+<div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 16px;">
+  <div style="display: flex; flex-direction: column; gap: 14px; font-family: var(--font-sans); color: #d4d4d4; font-size: 12px;">
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16,185,129,0.16); color: #10b981; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 500; font-size: 12px;">T₁</div>
+      <div style="flex: 1; color: var(--color-text-secondary); font-size: 13px;">Backend ativo — saves vão direto pela API REST</div>
+      <div style="font-family: var(--font-mono); font-size: 10px; color: var(--color-text-tertiary);">PUT /api/files/{path}</div>
+    </div>
+    <div style="background: #0f0f0f; border-radius: 8px; overflow: hidden; border: 1px solid rgba(16,185,129,0.25);">
+      <div style="background: #1a1a1a; padding: 6px 12px; font-family: var(--font-mono); font-size: 10px; color: #d4d4d4; border-bottom: 1px solid #2d2d30;">
+        <span style="color: #4ec9b0;">dotmon@project</span> <span style="color: #6b7280;">~</span> $ <span style="color: #6b7280;">// usuário pressiona Ctrl+S em main.mon</span>
+      </div>
+      <div style="background: #0e7490; padding: 5px 12px; display: flex; gap: 14px; font-size: 10px; color: #e0f2fe; align-items: center;">
+        <span style="display: flex; align-items: center; gap: 4px;"><i class="ti ti-git-branch" style="font-size: 11px;" aria-hidden="true"></i> main</span>
+        <span><i class="ti ti-x" style="font-size: 10px;" aria-hidden="true"></i> 0  <i class="ti ti-alert-triangle" style="font-size: 10px; margin-left: 4px;" aria-hidden="true"></i> 0</span>
+        <span style="flex: 1;"></span>
+        <span>Ln 3, Col 12</span>
+        <span>dotmon</span>
+        <span style="display: flex; align-items: center; gap: 5px;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.32);"></span>
+          <span style="font-weight: 500;">API</span>
+        </span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 6px;">
+      <i class="ti ti-arrow-down" style="color: var(--color-text-tertiary); font-size: 16px;" aria-hidden="true"></i>
+      <span style="font-size: 11px; color: var(--color-text-tertiary);">processo do FastAPI é encerrado externamente</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(245,158,11,0.16); color: #f59e0b; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 500; font-size: 12px;">T₂</div>
+      <div style="flex: 1; color: var(--color-text-secondary); font-size: 13px;">Conexão cai — IDE entra em modo Local, fila de sync se acumula</div>
+      <div style="font-family: var(--font-mono); font-size: 10px; color: var(--color-text-tertiary);">ECONNREFUSED</div>
+    </div>
+    <div style="background: #0f0f0f; border-radius: 8px; overflow: hidden; border: 1px solid rgba(245,158,11,0.25);">
+      <div style="background: #1a1a1a; padding: 8px 12px; font-family: var(--font-mono); font-size: 10px; color: #d4d4d4; line-height: 1.7; border-bottom: 1px solid #2d2d30;">
+        <div><span style="color: #f59e0b;">[warn]</span> Conexão com o backend perdida. Modo Local ativado.</div>
+        <div><span style="color: #6b7280;">[muted]</span> <span style="color: #6b7280;">Última conexão: 14:32:08 · fila pendente: 0</span></div>
+        <div><span style="color: #4ec9b0;">dotmon@project</span> <span style="color: #6b7280;">~</span> $ <span style="color: #6b7280;">// Ctrl+S agora vai para localStorage</span></div>
+        <div><span style="color: #6b7280;">[muted]</span> <span style="color: #6b7280;">queued: src/main.mon, src/helpers.mon · fila pendente: 2</span></div>
+      </div>
+      <div style="background: #4b4b4b; padding: 5px 12px; display: flex; gap: 14px; font-size: 10px; color: #d4d4d4; align-items: center;">
+        <span style="display: flex; align-items: center; gap: 4px;"><i class="ti ti-git-branch" style="font-size: 11px;" aria-hidden="true"></i> main</span>
+        <span><i class="ti ti-x" style="font-size: 10px;" aria-hidden="true"></i> 0  <i class="ti ti-alert-triangle" style="font-size: 10px; margin-left: 4px;" aria-hidden="true"></i> 0</span>
+        <span style="flex: 1;"></span>
+        <span>Ln 3, Col 12</span>
+        <span>dotmon</span>
+        <span style="display: flex; align-items: center; gap: 5px;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #9ca3af; background: transparent; box-sizing: border-box;"></span>
+          <span style="font-weight: 500;">Local</span>
+          <span style="background: rgba(245,158,11,0.3); color: #fde68a; font-size: 9px; padding: 0 5px; border-radius: 8px; margin-left: 3px;">2 pendentes</span>
+        </span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 6px;">
+      <i class="ti ti-arrow-down" style="color: var(--color-text-tertiary); font-size: 16px;" aria-hidden="true"></i>
+      <span style="font-size: 11px; color: var(--color-text-tertiary);">poller a cada 8 s — <code style="font-family: var(--font-mono); color: var(--color-text-secondary);">GET /api/health</code> responde 200</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16,185,129,0.16); color: #10b981; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 500; font-size: 12px;">T₃</div>
+      <div style="flex: 1; color: var(--color-text-secondary); font-size: 13px;">Backend volta — fila drenada em ordem, indicador pulsa verde</div>
+      <div style="font-family: var(--font-mono); font-size: 10px; color: var(--color-text-tertiary);">200 OK</div>
+    </div>
+    <div style="background: #0f0f0f; border-radius: 8px; overflow: hidden; border: 1px solid rgba(16,185,129,0.25);">
+      <div style="background: #1a1a1a; padding: 8px 12px; font-family: var(--font-mono); font-size: 10px; color: #d4d4d4; line-height: 1.7; border-bottom: 1px solid #2d2d30;">
+        <div><span style="color: #10b981;">[success]</span> Backend reconectado. Sincronizando…</div>
+        <div><span style="color: #6b7280;">[muted]</span> &nbsp;&nbsp;<span style="color: #10b981;">✓</span> src/main.mon sincronizado</div>
+        <div><span style="color: #6b7280;">[muted]</span> &nbsp;&nbsp;<span style="color: #10b981;">✓</span> src/helpers.mon sincronizado</div>
+        <div><span style="color: #9cdcfe;">[info]</span> Fila vazia · todas as alterações persistidas.</div>
+      </div>
+      <div style="background: #0e7490; padding: 5px 12px; display: flex; gap: 14px; font-size: 10px; color: #e0f2fe; align-items: center;">
+        <span style="display: flex; align-items: center; gap: 4px;"><i class="ti ti-git-branch" style="font-size: 11px;" aria-hidden="true"></i> main</span>
+        <span><i class="ti ti-x" style="font-size: 10px;" aria-hidden="true"></i> 0  <i class="ti ti-alert-triangle" style="font-size: 10px; margin-left: 4px;" aria-hidden="true"></i> 0</span>
+        <span style="flex: 1;"></span>
+        <span>Ln 3, Col 12</span>
+        <span>dotmon</span>
+        <span style="display: flex; align-items: center; gap: 5px;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 4px rgba(16,185,129,0.28);"></span>
+          <span style="font-weight: 500;">API</span>
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>
