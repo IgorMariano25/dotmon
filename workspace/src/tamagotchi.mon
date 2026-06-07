@@ -1,0 +1,189 @@
+Start
+{
+    // ─── Funcoes auxiliares (declaradas antes do uso) ───────
+
+    // Limita um valor entre 0 e 100
+    Xros Baby limita(Baby v) {
+        Evo (v < 0) {
+            Send 0;
+        }
+        Evo (v > 100) {
+            Send 100;
+        }
+        Send v;
+    }
+
+    // Calcula o estado emocional a partir dos status
+    // Retorno: 0=FELIZ  1=COM_FOME  2=TRISTE  3=DORMINDO
+    Xros Baby calcularEstado(Baby f, Baby fel, Champ dorme) {
+        Evo (dorme == true) {
+            Send 3;
+        }
+        Evo (f >= 70) {
+            Send 1;
+        }
+        Evo (fel <= 30) {
+            Send 2;
+        }
+        Send 0;
+    }
+
+    // ─── Constantes: personagens ────────────────────────────
+    Baby DIGI_AGUMON = 0;
+    Baby DIGI_GABUMON = 1;
+    Baby DIGI_PATAMON = 2;
+
+    // ─── Constantes: estados emocionais ─────────────────────
+    Baby FELIZ = 0;
+    Baby COM_FOME = 1;
+    Baby TRISTE = 2;
+    Baby DORMINDO = 3;
+
+    // ─── Status do bichinho (0 a 100) ───────────────────────
+    Baby digimonAtual = 0;
+    Baby fome = 0;
+    Baby felicidade = 80;
+    Baby energia = 100;
+    Champ dormindo = false;
+    Baby estadoAtual = 0;
+
+    // ─── Selecao inicial do personagem ──────────────────────
+    Show("=== DOTMON Tamagotchi ===");
+    Show("Escolha seu Digimon:");
+    Show("0 = Agumon  |  1 = Gabumon  |  2 = Patamon");
+
+    // Primeiro clique: apenas visualiza o personagem
+    Baby escolha = 0;
+    Show("Primeiro clique (ver personagem):");
+    Ask(escolha);
+
+    Evo (escolha == DIGI_AGUMON) {
+        Show("Preview: Agumon");
+    } AltEvo (escolha == DIGI_GABUMON) {
+        Show("Preview: Gabumon");
+    } AltEvo (escolha == DIGI_PATAMON) {
+        Show("Preview: Patamon");
+    } FailEvo {
+        Show("Opcao invalida, usando Agumon");
+        escolha = DIGI_AGUMON;
+    }
+
+    // Segundo clique no mesmo numero confirma a escolha
+    Baby confirmacao = 0;
+    Show("Segundo clique (mesmo numero) para confirmar:");
+    Ask(confirmacao);
+
+    Evo (confirmacao == escolha) {
+        digimonAtual = escolha;
+        Show("Escolha confirmada!");
+    } FailEvo {
+        digimonAtual = escolha;
+        Show("Confirmacao diferente, mantendo o preview.");
+    }
+
+    // Reinicia os status para o novo bichinho
+    fome = 0;
+    felicidade = 80;
+    energia = 100;
+    dormindo = false;
+
+    // ─── Simulacao do tamagotchi ────────────────────────────
+    Show("--- Cuide do seu Digimon ---");
+    Show("Acoes: 1=Alimentar  2=Brincar  3=Dormir/Acordar  0=Sair");
+
+    Baby rodando = 1;
+    Spiral (rodando == 1) {
+        Baby acao = 0;
+        Show("Escolha uma acao:");
+        Ask(acao);
+
+        // ── Acao escolhida pelo jogador ──
+        Evo (acao == 1) {
+            // Alimentar
+            fome = fome - 35;
+            felicidade = felicidade + 5;
+            Show("Voce alimentou seu Digimon!");
+        } AltEvo (acao == 2) {
+            // Brincar (precisa de energia)
+            Evo (energia < 15) {
+                Show("Sem energia para brincar!");
+            } FailEvo {
+                felicidade = felicidade + 30;
+                energia = energia - 15;
+                fome = fome + 10;
+                Show("Voce brincou com seu Digimon!");
+            }
+        } AltEvo (acao == 3) {
+            // Dormir / Acordar
+            Evo (dormindo == true) {
+                dormindo = false;
+                Show("Seu Digimon acordou!");
+            } FailEvo {
+                dormindo = true;
+                Show("Seu Digimon foi dormir...");
+            }
+        } AltEvo (acao == 0) {
+            rodando = 0;
+            Show("Ate logo!");
+        } FailEvo {
+            Show("Acao invalida.");
+        }
+
+        // ── Passagem de tempo: atualiza os status ──
+        Evo (dormindo == true) {
+            // Dormindo: recupera energia, fome sobe devagar
+            energia = energia + 15;
+            fome = fome + 3;
+        } FailEvo {
+            // Acordado: fica com fome, gasta energia e felicidade
+            fome = fome + 8;
+            energia = energia - 5;
+            felicidade = felicidade - 4;
+        }
+
+        // Fome alta e exaustao reduzem mais a felicidade
+        Evo (fome > 70) {
+            felicidade = felicidade - 4;
+        }
+        Evo (energia < 20) {
+            felicidade = felicidade - 3;
+        }
+
+        // Mantem os status dentro de 0 a 100
+        fome = limita(fome);
+        felicidade = limita(felicidade);
+        energia = limita(energia);
+
+        // Acorda sozinho quando totalmente descansado
+        Evo (energia >= 100 && dormindo == true) {
+            dormindo = false;
+            Show("Acordou descansado!");
+        }
+
+        // Recalcula o estado emocional
+        estadoAtual = calcularEstado(fome, felicidade, dormindo);
+
+        // ── Relatorio da rodada ──
+        Show("Fome:");
+        Show(fome);
+        Show("Felicidade:");
+        Show(felicidade);
+        Show("Energia:");
+        Show(energia);
+
+        Evo (estadoAtual == FELIZ) {
+            Show("Estado: FELIZ");
+        } AltEvo (estadoAtual == COM_FOME) {
+            Show("Estado: COM FOME");
+        } AltEvo (estadoAtual == TRISTE) {
+            Show("Estado: TRISTE");
+        } AltEvo (estadoAtual == DORMINDO) {
+            Show("Estado: DORMINDO");
+        } FailEvo {
+            Show("Estado: desconhecido");
+        }
+    }
+
+    Show("=== Fim do Tamagotchi ===");
+}
+Finish
