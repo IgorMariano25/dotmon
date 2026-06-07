@@ -9,7 +9,7 @@ int main(void) {
     // Attacker stats
     char atacante[256] = "WarGreymon";
     long ataque = 850;
-    int velocidade = 120;
+    char velocidade[256] = 120;
     // Defender stats
     char defensor[256] = "MetalGarurumon";
     int defesa = 780;
@@ -23,7 +23,7 @@ int main(void) {
         printf("ofereceu dano de:\n");
         printf("%d\n", dano);
         printf("Velocidade do ataque foi de:\n");
-        printf("%d\n", velocidade);
+        printf("%s\n", velocidade);
         printf("%s\n", defensor);
         printf("sofreu dano de:\n");
         printf("%d\n", dano);

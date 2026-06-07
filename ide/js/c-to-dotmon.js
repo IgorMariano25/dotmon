@@ -25,6 +25,10 @@ const CToDotmon = (() => {
     KW_RETURN: "KW_RETURN",
     KW_BREAK: "KW_BREAK",
     KW_CONTINUE: "KW_CONTINUE",
+    KW_SWITCH: "KW_SWITCH",
+    KW_CASE: "KW_CASE",
+    KW_DEFAULT: "KW_DEFAULT",
+    KW_DO: "KW_DO",
     // Literals
     KW_TRUE: "KW_TRUE",
     KW_FALSE: "KW_FALSE",
@@ -33,6 +37,11 @@ const CToDotmon = (() => {
     KW_PRINTF: "KW_PRINTF",
     KW_SCANF: "KW_SCANF",
     KW_STRCPY: "KW_STRCPY",
+    KW_ENUM: "KW_ENUM",
+    KW_UNSIGNED: "KW_UNSIGNED",
+    KW_STATIC: "KW_STATIC",
+    KW_CONST: "KW_CONST",
+    KW_STRUCT: "KW_STRUCT",
     // Identifiers & literals
     IDENTIFIER: "IDENTIFIER",
     INT_LITERAL: "INT_LITERAL",
@@ -55,6 +64,10 @@ const CToDotmon = (() => {
     OP_OR: "OP_OR",
     OP_NOT: "OP_NOT",
     OP_MOD: "OP_MOD",
+    OP_PLUSPLUS: "OP_PLUSPLUS",
+    OP_MINUSMINUS: "OP_MINUSMINUS",
+    OP_PLUS_ASSIGN: "OP_PLUS_ASSIGN",
+    OP_MINUS_ASSIGN: "OP_MINUS_ASSIGN",
     OP_AMP: "OP_AMP",
     // Delimiters
     LPAREN: "LPAREN",
@@ -66,6 +79,7 @@ const CToDotmon = (() => {
     SEMICOLON: "SEMICOLON",
     COMMA: "COMMA",
     DOT: "DOT",
+    COLON: "COLON",
     HASH: "HASH",
     // Special
     LINE_COMMENT: "LINE_COMMENT",
@@ -90,11 +104,20 @@ const CToDotmon = (() => {
     return: CT.KW_RETURN,
     break: CT.KW_BREAK,
     continue: CT.KW_CONTINUE,
+    switch: CT.KW_SWITCH,
+    case: CT.KW_CASE,
+    default: CT.KW_DEFAULT,
+    do: CT.KW_DO,
     true: CT.KW_TRUE,
     false: CT.KW_FALSE,
     printf: CT.KW_PRINTF,
     scanf: CT.KW_SCANF,
     strcpy: CT.KW_STRCPY,
+    enum: CT.KW_ENUM,
+    unsigned: CT.KW_UNSIGNED,
+    static: CT.KW_STATIC,
+    const: CT.KW_CONST,
+    struct: CT.KW_STRUCT,
   };
 
   const C_TYPE_TOKENS = new Set([
@@ -105,6 +128,7 @@ const CToDotmon = (() => {
     CT.KW_CHAR,
     CT.KW_BOOL,
     CT.KW_VOID,
+    CT.KW_UNSIGNED,
   ]);
 
   // ─── C Lexer ──────────────────────────────────────────
@@ -169,9 +193,15 @@ const CToDotmon = (() => {
           return this.addToken(CT.COMMA);
         case ".":
           return this.addToken(CT.DOT);
+        case ":":
+          return this.addToken(CT.COLON);
         case "+":
+          if (this.match("+")) return this.addToken(CT.OP_PLUSPLUS);
+          if (this.match("=")) return this.addToken(CT.OP_PLUS_ASSIGN);
           return this.addToken(CT.OP_PLUS);
         case "-":
+          if (this.match("-")) return this.addToken(CT.OP_MINUSMINUS);
+          if (this.match("=")) return this.addToken(CT.OP_MINUS_ASSIGN);
           return this.addToken(CT.OP_MINUS);
         case "*":
           return this.addToken(CT.OP_MUL);
@@ -254,6 +284,12 @@ const CToDotmon = (() => {
     }
 
     number() {
+      // Handle hex literals (0x...)
+      if (this.source[this.start] === "0" && (this.peek() === "x" || this.peek() === "X")) {
+        this.advance(); // x
+        while (!this.isAtEnd() && /[0-9a-fA-F]/.test(this.peek())) this.advance();
+        return this.addToken(CT.INT_LITERAL);
+      }
       while (!this.isAtEnd() && this.isDigit(this.peek())) this.advance();
       if (this.peek() === "." && this.isDigit(this.peekNext())) {
         this.advance();
@@ -357,18 +393,16 @@ const CToDotmon = (() => {
     parse() {
       const functions = [];
       const mainBody = [];
+      this.knownTypes = new Set(); // Track enum/struct type names
 
-      // Skip preprocessor directives
-      while (this.check(CT.PREPROCESSOR)) this.advance();
-
-      // Parse top-level: functions and main
+      // Parse top-level: functions, enums, globals, main
       while (!this.isAtEnd()) {
         this.collectComments();
         if (this.isAtEnd()) break;
 
-        // Skip preprocessor
+        // Handle preprocessor (#define, #include, etc.)
         if (this.check(CT.PREPROCESSOR)) {
-          this.advance();
+          this.handlePreprocessor(mainBody);
           continue;
         }
 
@@ -377,22 +411,62 @@ const CToDotmon = (() => {
           (c) => !c.startsWith("/*"),
         );
 
+        // Skip static/const modifiers at top level
+        while (this.checkAny([CT.KW_STATIC, CT.KW_CONST])) this.advance();
+        if (this.isAtEnd()) break;
+
+        // Enum declaration
+        if (this.check(CT.KW_ENUM)) {
+          if (this.looksLikeEnumVarDecl()) {
+            const decl = this.parseGlobalVarDecl();
+            if (decl) {
+              if (comments.length > 0) decl.leadingComments = comments;
+              mainBody.push(decl);
+            }
+          } else {
+            const enumDecls = this.parseEnum();
+            for (let i = 0; i < enumDecls.length; i++) {
+              if (comments.length > 0 && i === 0) {
+                enumDecls[i].leadingComments = comments;
+              }
+              mainBody.push(enumDecls[i]);
+            }
+          }
+          continue;
+        }
+
+        // Struct declaration — skip entirely
+        if (this.check(CT.KW_STRUCT)) {
+          this.skipStructDecl();
+          continue;
+        }
+
         // Detect: type name(...) { ... }  →  function or main
-        if (this.isTypeToken() && this.looksLikeFunction()) {
+        if (this.isTypeTokenOrCustom() && this.looksLikeFunction()) {
           const func = this.parseFunctionOrMain();
           if (func.leadingComments === undefined && comments.length > 0) {
             func.leadingComments = comments;
           }
           if (func.isMain) {
-            // main body statements get merged
             for (const s of func.body) mainBody.push(s);
           } else {
             functions.push(func);
           }
-        } else {
-          // top-level statement (shouldn't happen in valid C, skip)
-          this.advance();
+          continue;
         }
+
+        // Global variable declaration: type name = ...; or type name;
+        if (this.isTypeTokenOrCustom() && this.looksLikeGlobalVar()) {
+          const decl = this.parseGlobalVarDecl();
+          if (decl) {
+            if (comments.length > 0) decl.leadingComments = comments;
+            mainBody.push(decl);
+          }
+          continue;
+        }
+
+        // top-level statement (shouldn't happen in valid C, skip)
+        this.advance();
       }
 
       // Build AST: functions inside body (like Dotmon does), then main stmts
@@ -400,14 +474,169 @@ const CToDotmon = (() => {
       return { type: "Program", body };
     }
 
-    // ─── Top-level Parsing ──────────────────────────────
-    looksLikeFunction() {
-      // Save position, look ahead: type [name] ( ...
+    handlePreprocessor(mainBody) {
+      const tok = this.advance();
+      const defineMatch = tok.lexeme.match(/^#\s*define\s+(\w+)\s+(.+)/);
+      if (defineMatch) {
+        const name = defineMatch[1];
+        const valueStr = defineMatch[2].trim();
+        const numVal = Number(valueStr);
+        if (!isNaN(numVal) && valueStr !== "") {
+          mainBody.push({
+            type: "VarDecl",
+            varType: Number.isInteger(numVal) ? "Baby" : "Pup",
+            name,
+            init: {
+              type: Number.isInteger(numVal) ? "IntLiteral" : "FloatLiteral",
+              value: numVal,
+              line: tok.line,
+              column: tok.column,
+            },
+            line: tok.line,
+            column: tok.column,
+          });
+        }
+      }
+    }
+
+    parseEnum() {
+      const tok = this.advance(); // enum
+      if (this.check(CT.IDENTIFIER)) {
+        this.knownTypes.add(this.peek().lexeme);
+        this.advance(); // enum name
+      }
+      this.expect(CT.LBRACE, "Esperado '{'");
+      const values = [];
+      let counter = 0;
+      while (!this.check(CT.RBRACE) && !this.isAtEnd()) {
+        this.collectComments();
+        if (this.check(CT.RBRACE)) break;
+        const nameTok = this.expect(CT.IDENTIFIER, "Esperado nome do enum");
+        if (this.check(CT.OP_ASSIGN)) {
+          this.advance();
+          const val = this.expression();
+          if (val.type === "IntLiteral") counter = val.value;
+        }
+        values.push({
+          name: nameTok.lexeme,
+          value: counter,
+          line: nameTok.line,
+          column: nameTok.column,
+        });
+        counter++;
+        if (this.check(CT.COMMA)) this.advance();
+      }
+      this.expect(CT.RBRACE, "Esperado '}'");
+      if (this.check(CT.SEMICOLON)) this.advance();
+      return values.map((v) => ({
+        type: "VarDecl",
+        varType: "Baby",
+        name: v.name,
+        init: {
+          type: "IntLiteral",
+          value: v.value,
+          line: v.line,
+          column: v.column,
+        },
+        line: v.line,
+        column: v.column,
+      }));
+    }
+
+    looksLikeEnumVarDecl() {
+      // enum Name varName ... (not enum Name { )
       const saved = this.pos;
       try {
+        this.advanceRaw(); // enum
+        if (this.checkRaw(CT.IDENTIFIER)) {
+          this.advanceRaw(); // Name
+          if (this.checkRaw(CT.IDENTIFIER)) return true; // varName follows
+        }
+        return false;
+      } finally {
+        this.pos = saved;
+      }
+    }
+
+    skipStructDecl() {
+      this.advance(); // struct
+      if (this.check(CT.IDENTIFIER)) this.advance(); // name
+      if (this.check(CT.LBRACE)) {
+        let depth = 1;
+        this.advance(); // {
+        while (depth > 0 && !this.isAtEnd()) {
+          if (this.check(CT.LBRACE)) depth++;
+          if (this.check(CT.RBRACE)) depth--;
+          this.advance();
+        }
+      }
+      if (this.check(CT.SEMICOLON)) this.advance();
+    }
+
+    isTypeTokenOrCustom() {
+      const tok = this.peek();
+      if (C_TYPE_TOKENS.has(tok.type)) return true;
+      if (tok.type === CT.KW_ENUM) return true;
+      if (tok.type === CT.IDENTIFIER && this.knownTypes && this.knownTypes.has(tok.lexeme)) return true;
+      return false;
+    }
+
+    looksLikeGlobalVar() {
+      const saved = this.pos;
+      try {
+        // Skip type modifiers
+        while (
+          this.checkRaw(CT.KW_UNSIGNED) ||
+          this.checkRaw(CT.KW_CONST) ||
+          this.checkRaw(CT.KW_STATIC) ||
+          this.checkRaw(CT.KW_ENUM)
+        )
+          this.advanceRaw();
         this.advanceRaw(); // type
+        // Skip additional type keyword (e.g., 'long' after 'unsigned')
+        if (this.pos < this.tokens.length && C_TYPE_TOKENS.has(this.tokens[this.pos].type))
+          this.advanceRaw();
+        if (this.checkRaw(CT.IDENTIFIER)) {
+          this.advanceRaw(); // var name
+          return (
+            this.checkRaw(CT.OP_ASSIGN) ||
+            this.checkRaw(CT.SEMICOLON) ||
+            this.checkRaw(CT.LBRACKET) ||
+            this.checkRaw(CT.LPAREN)
+          );
+        }
+        return false;
+      } finally {
+        this.pos = saved;
+      }
+    }
+
+    parseGlobalVarDecl() {
+      return this.varDeclStatement();
+    }
+
+    // ─── Top-level Parsing ──────────────────────────────
+    looksLikeFunction() {
+      const saved = this.pos;
+      try {
+        // Skip modifiers: static, const
+        while (this.checkRaw(CT.KW_STATIC) || this.checkRaw(CT.KW_CONST))
+          this.advanceRaw();
+
+        // Skip type (could be unsigned long, enum Name, or simple type)
+        if (this.checkRaw(CT.KW_UNSIGNED)) {
+          this.advanceRaw();
+          if (this.pos < this.tokens.length && C_TYPE_TOKENS.has(this.tokens[this.pos].type))
+            this.advanceRaw();
+        } else if (this.checkRaw(CT.KW_ENUM)) {
+          this.advanceRaw(); // enum
+          if (this.checkRaw(CT.IDENTIFIER)) this.advanceRaw(); // enum name
+        } else {
+          this.advanceRaw(); // type keyword or custom type identifier
+        }
+
         if (this.checkRaw(CT.IDENTIFIER) || this.checkRaw(CT.KW_PRINTF) || this.checkRaw(CT.KW_SCANF)) {
-          this.advanceRaw(); // name or "main"
+          this.advanceRaw(); // name
           return this.checkRaw(CT.LPAREN);
         }
         return false;
@@ -417,8 +646,21 @@ const CToDotmon = (() => {
     }
 
     parseFunctionOrMain() {
+      // Skip const/static modifiers
+      while (this.checkAny([CT.KW_STATIC, CT.KW_CONST])) this.advance();
+
       const retTypeTok = this.advance();
-      const retType = retTypeTok.lexeme;
+      let retType = retTypeTok.lexeme;
+
+      // Handle 'unsigned long' etc.
+      if (retTypeTok.type === CT.KW_UNSIGNED) {
+        if (this.checkAny([CT.KW_LONG, CT.KW_INT, CT.KW_CHAR])) {
+          retType = "unsigned " + this.advance().lexeme;
+        } else {
+          retType = "unsigned int";
+        }
+      }
+
       const nameTok = this.advance();
       const name = nameTok.lexeme;
 
@@ -436,7 +678,24 @@ const CToDotmon = (() => {
       const params = [];
       if (!this.check(CT.RPAREN)) {
         do {
-          const pType = this.advance(); // type token
+          // Skip const/static in params
+          while (this.checkAny([CT.KW_STATIC, CT.KW_CONST])) this.advance();
+
+          let pType;
+          if (this.check(CT.KW_UNSIGNED)) {
+            pType = this.advance();
+            if (this.checkAny([CT.KW_LONG, CT.KW_INT, CT.KW_CHAR])) {
+              pType = { ...pType, lexeme: "unsigned " + this.advance().lexeme };
+            } else {
+              pType = { ...pType, lexeme: "unsigned int" };
+            }
+          } else if (this.check(CT.KW_ENUM)) {
+            this.advance(); // skip 'enum'
+            pType = this.advance(); // type name identifier
+          } else {
+            pType = this.advance(); // type token or custom type identifier
+          }
+
           const pName = this.expect(CT.IDENTIFIER, "Esperado nome do parametro");
           let paramCType = pType.lexeme;
           // Handle char name[] → Moji
@@ -500,10 +759,30 @@ const CToDotmon = (() => {
       if (tok.type === CT.KW_IF) return this.ifStatement();
       if (tok.type === CT.KW_WHILE) return this.whileStatement();
       if (tok.type === CT.KW_FOR) return this.forStatement();
+      if (tok.type === CT.KW_SWITCH) return this.switchStatement();
       if (tok.type === CT.KW_PRINTF) return this.printfStatement();
       if (tok.type === CT.KW_SCANF) return this.scanfStatement();
       if (tok.type === CT.KW_STRCPY) return this.strcpyStatement();
+
+      // Skip static/const before declarations
+      if (tok.type === CT.KW_STATIC || tok.type === CT.KW_CONST) {
+        // Don't consume — varDeclStatement handles them
+        if (this.looksLikeLocalVarDecl()) return this.varDeclStatement();
+        this.advance(); // skip standalone modifier
+        return this.statement();
+      }
+
+      // enum type variable declaration: enum Name var = ...;
+      if (tok.type === CT.KW_ENUM) return this.varDeclStatement();
+      // unsigned (long/int/char) var = ...;
+      if (tok.type === CT.KW_UNSIGNED) return this.varDeclStatement();
       if (this.isTypeToken()) return this.varDeclStatement();
+
+      // Custom type variable declaration: TypeName varName = ...;
+      if (tok.type === CT.IDENTIFIER && this.knownTypes && this.knownTypes.has(tok.lexeme)) {
+        if (this.looksLikeLocalVarDecl()) return this.varDeclStatement();
+      }
+
       if (tok.type === CT.IDENTIFIER) return this.assignmentOrExpr();
 
       // Skip unknown
@@ -511,10 +790,53 @@ const CToDotmon = (() => {
       return null;
     }
 
+    looksLikeLocalVarDecl() {
+      const saved = this.pos;
+      try {
+        // Skip modifiers
+        while (
+          this.checkRaw(CT.KW_STATIC) ||
+          this.checkRaw(CT.KW_CONST) ||
+          this.checkRaw(CT.KW_UNSIGNED) ||
+          this.checkRaw(CT.KW_ENUM)
+        )
+          this.advanceRaw();
+        // Skip type
+        if (this.pos < this.tokens.length) this.advanceRaw();
+        // Skip additional type keyword (e.g., 'long' after 'unsigned')
+        if (this.pos < this.tokens.length && C_TYPE_TOKENS.has(this.tokens[this.pos].type))
+          this.advanceRaw();
+        // Check for identifier (variable name)
+        return this.checkRaw(CT.IDENTIFIER);
+      } finally {
+        this.pos = saved;
+      }
+    }
+
     // ─── Variable Declaration ───────────────────────────
     varDeclStatement() {
+      // Skip const/static modifiers
+      while (this.checkAny([CT.KW_STATIC, CT.KW_CONST])) this.advance();
+
       const typeTok = this.advance();
       let cType = typeTok.lexeme;
+
+      // Handle 'unsigned long', 'unsigned int', etc.
+      if (typeTok.type === CT.KW_UNSIGNED) {
+        if (this.checkAny([CT.KW_LONG, CT.KW_INT, CT.KW_CHAR])) {
+          cType = "unsigned " + this.advance().lexeme;
+        } else {
+          cType = "unsigned int";
+        }
+      }
+
+      // Handle 'enum TypeName' as a type
+      if (typeTok.type === CT.KW_ENUM) {
+        if (this.check(CT.IDENTIFIER)) {
+          cType = this.advance().lexeme;
+        }
+      }
+
       const nameTok = this.expect(CT.IDENTIFIER, "Esperado nome da variavel");
       const name = nameTok.lexeme;
 
@@ -528,6 +850,32 @@ const CToDotmon = (() => {
       }
 
       this.symbolTypes[name] = cType;
+
+      // Handle declaration without initialization: type name;
+      if (this.check(CT.SEMICOLON)) {
+        this.advance();
+        return {
+          type: "VarDecl",
+          varType: this.cTypeToDotmon(cType),
+          name,
+          init: this.defaultInitForType(cType),
+          line: typeTok.line,
+          column: typeTok.column,
+        };
+      }
+
+      // Handle constructor-like init: Type name(args); — skip
+      if (this.check(CT.LPAREN)) {
+        this.advance(); // (
+        let depth = 1;
+        while (depth > 0 && !this.isAtEnd()) {
+          if (this.check(CT.LPAREN)) depth++;
+          if (this.check(CT.RPAREN)) depth--;
+          this.advance();
+        }
+        if (this.check(CT.SEMICOLON)) this.advance();
+        return null;
+      }
 
       this.expect(CT.OP_ASSIGN, "Esperado '='");
       const init = this.expression();
@@ -543,9 +891,26 @@ const CToDotmon = (() => {
       };
     }
 
+    defaultInitForType(cType) {
+      if (cType === "char[]" || cType === "char*")
+        return { type: "StringLiteral", value: "" };
+      if (cType === "float" || cType === "double")
+        return { type: "FloatLiteral", value: 0.0 };
+      if (cType === "bool")
+        return { type: "BoolLiteral", value: false };
+      if (cType === "char")
+        return { type: "CharLiteral", value: " " };
+      return { type: "IntLiteral", value: 0 };
+    }
+
     // ─── Assignment or Expression Statement ─────────────
     assignmentOrExpr() {
       const nameTok = this.peek();
+
+      // Check for dot-method call: name.method(args);
+      if (this.peekNextSkipComments().type === CT.DOT) {
+        return this.dotCallStatement();
+      }
 
       // Check if it's name = expr;
       if (this.peekNextSkipComments().type === CT.OP_ASSIGN) {
@@ -557,6 +922,83 @@ const CToDotmon = (() => {
           type: "Assignment",
           name: nameTok.lexeme,
           value,
+          line: nameTok.line,
+          column: nameTok.column,
+        };
+      }
+
+      // Compound assignment: name += expr;
+      if (this.peekNextSkipComments().type === CT.OP_PLUS_ASSIGN) {
+        this.advance(); // name
+        this.advance(); // +=
+        const value = this.expression();
+        this.expect(CT.SEMICOLON, "Esperado ';'");
+        return {
+          type: "Assignment",
+          name: nameTok.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "+",
+            left: { type: "Identifier", name: nameTok.lexeme },
+            right: value,
+          },
+          line: nameTok.line,
+          column: nameTok.column,
+        };
+      }
+
+      if (this.peekNextSkipComments().type === CT.OP_MINUS_ASSIGN) {
+        this.advance(); // name
+        this.advance(); // -=
+        const value = this.expression();
+        this.expect(CT.SEMICOLON, "Esperado ';'");
+        return {
+          type: "Assignment",
+          name: nameTok.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "-",
+            left: { type: "Identifier", name: nameTok.lexeme },
+            right: value,
+          },
+          line: nameTok.line,
+          column: nameTok.column,
+        };
+      }
+
+      // Post-increment: name++;
+      if (this.peekNextSkipComments().type === CT.OP_PLUSPLUS) {
+        this.advance(); // name
+        this.advance(); // ++
+        this.expect(CT.SEMICOLON, "Esperado ';'");
+        return {
+          type: "Assignment",
+          name: nameTok.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "+",
+            left: { type: "Identifier", name: nameTok.lexeme },
+            right: { type: "IntLiteral", value: 1 },
+          },
+          line: nameTok.line,
+          column: nameTok.column,
+        };
+      }
+
+      // Post-decrement: name--;
+      if (this.peekNextSkipComments().type === CT.OP_MINUSMINUS) {
+        this.advance(); // name
+        this.advance(); // --
+        this.expect(CT.SEMICOLON, "Esperado ';'");
+        return {
+          type: "Assignment",
+          name: nameTok.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "-",
+            left: { type: "Identifier", name: nameTok.lexeme },
+            right: { type: "IntLiteral", value: 1 },
+          },
           line: nameTok.line,
           column: nameTok.column,
         };
@@ -584,6 +1026,44 @@ const CToDotmon = (() => {
         line: nameTok.line,
         column: nameTok.column,
       };
+    }
+
+    // ─── Dot-method call: obj.method(args); ─────────────
+    dotCallStatement() {
+      const objTok = this.advance(); // object name
+      this.advance(); // .
+      const methodTok = this.expect(CT.IDENTIFIER, "Esperado nome do metodo");
+
+      if (this.check(CT.LPAREN)) {
+        this.advance(); // (
+        const args = [];
+        if (!this.check(CT.RPAREN)) {
+          args.push(this.expression());
+          while (this.check(CT.COMMA)) {
+            this.advance();
+            args.push(this.expression());
+          }
+        }
+        this.expect(CT.RPAREN, "Esperado ')'");
+        this.expect(CT.SEMICOLON, "Esperado ';'");
+
+        return {
+          type: "ExprStmt",
+          expression: {
+            type: "CallExpr",
+            callee: `${objTok.lexeme}.${methodTok.lexeme}`,
+            args,
+            line: objTok.line,
+            column: objTok.column,
+          },
+          line: objTok.line,
+          column: objTok.column,
+        };
+      }
+
+      // Dot access without call
+      this.expect(CT.SEMICOLON, "Esperado ';'");
+      return null;
     }
 
     // ─── printf → Show ──────────────────────────────────
@@ -762,6 +1242,85 @@ const CToDotmon = (() => {
       };
     }
 
+    // ─── switch → Evo/AltEvo/FailEvo chain ────────────
+    switchStatement() {
+      const tok = this.advance(); // switch
+      this.expect(CT.LPAREN, "Esperado '('");
+      const discriminant = this.expression();
+      this.expect(CT.RPAREN, "Esperado ')'");
+      this.expect(CT.LBRACE, "Esperado '{'");
+
+      const branches = [];
+      let defaultBody = null;
+
+      while (!this.check(CT.RBRACE) && !this.isAtEnd()) {
+        this.collectComments();
+        if (this.check(CT.RBRACE)) break;
+
+        if (this.check(CT.KW_CASE)) {
+          this.advance(); // case
+          const caseValue = this.expression();
+          this.expect(CT.COLON, "Esperado ':'");
+
+          const stmts = [];
+          while (
+            !this.checkAny([CT.KW_CASE, CT.KW_DEFAULT, CT.RBRACE]) &&
+            !this.isAtEnd()
+          ) {
+            if (this.check(CT.KW_BREAK)) {
+              this.advance();
+              if (this.check(CT.SEMICOLON)) this.advance();
+              break;
+            }
+            const s = this.statement();
+            if (s) stmts.push(s);
+          }
+
+          branches.push({
+            condition: {
+              type: "BinaryExpr",
+              op: "==",
+              left: { ...discriminant },
+              right: caseValue,
+              line: tok.line,
+              column: tok.column,
+            },
+            body: stmts,
+          });
+        } else if (this.check(CT.KW_DEFAULT)) {
+          this.advance(); // default
+          this.expect(CT.COLON, "Esperado ':'");
+
+          const stmts = [];
+          while (
+            !this.checkAny([CT.KW_CASE, CT.RBRACE]) &&
+            !this.isAtEnd()
+          ) {
+            if (this.check(CT.KW_BREAK)) {
+              this.advance();
+              if (this.check(CT.SEMICOLON)) this.advance();
+              break;
+            }
+            const s = this.statement();
+            if (s) stmts.push(s);
+          }
+          defaultBody = stmts;
+        } else {
+          this.advance(); // skip unknown inside switch
+        }
+      }
+
+      this.expect(CT.RBRACE, "Esperado '}'");
+
+      return {
+        type: "IfChain",
+        branches,
+        elseBranch: defaultBody,
+        line: tok.line,
+        column: tok.column,
+      };
+    }
+
     // ─── if/else if/else → Evo/AltEvo/FailEvo ──────────
     ifStatement() {
       const tok = this.advance(); // if
@@ -835,15 +1394,68 @@ const CToDotmon = (() => {
       const condition = this.expression();
       this.expect(CT.SEMICOLON, "Esperado ';'");
 
-      // Step: name = expr
+      // Step: name = expr OR name++ OR name-- OR name += expr
       const stepName = this.expect(CT.IDENTIFIER, "Esperado identificador");
-      this.expect(CT.OP_ASSIGN, "Esperado '='");
-      const stepValue = this.expression();
-      const step = {
-        type: "Assignment",
-        name: stepName.lexeme,
-        value: stepValue,
-      };
+      let step;
+      if (this.check(CT.OP_PLUSPLUS)) {
+        this.advance();
+        step = {
+          type: "Assignment",
+          name: stepName.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "+",
+            left: { type: "Identifier", name: stepName.lexeme },
+            right: { type: "IntLiteral", value: 1 },
+          },
+        };
+      } else if (this.check(CT.OP_MINUSMINUS)) {
+        this.advance();
+        step = {
+          type: "Assignment",
+          name: stepName.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "-",
+            left: { type: "Identifier", name: stepName.lexeme },
+            right: { type: "IntLiteral", value: 1 },
+          },
+        };
+      } else if (this.check(CT.OP_PLUS_ASSIGN)) {
+        this.advance();
+        const v = this.expression();
+        step = {
+          type: "Assignment",
+          name: stepName.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "+",
+            left: { type: "Identifier", name: stepName.lexeme },
+            right: v,
+          },
+        };
+      } else if (this.check(CT.OP_MINUS_ASSIGN)) {
+        this.advance();
+        const v = this.expression();
+        step = {
+          type: "Assignment",
+          name: stepName.lexeme,
+          value: {
+            type: "BinaryExpr",
+            op: "-",
+            left: { type: "Identifier", name: stepName.lexeme },
+            right: v,
+          },
+        };
+      } else {
+        this.expect(CT.OP_ASSIGN, "Esperado '='");
+        const stepValue = this.expression();
+        step = {
+          type: "Assignment",
+          name: stepName.lexeme,
+          value: stepValue,
+        };
+      }
 
       this.expect(CT.RPAREN, "Esperado ')'");
       const body = this.blockStatements();
@@ -1065,6 +1677,36 @@ const CToDotmon = (() => {
       }
       if (tok.type === CT.IDENTIFIER) {
         this.advance();
+        // Dot-method call: obj.method(args) or member access: obj.prop
+        if (this.check(CT.DOT)) {
+          this.advance(); // .
+          const memberTok = this.expect(CT.IDENTIFIER, "Esperado nome do membro");
+          if (this.check(CT.LPAREN)) {
+            this.advance(); // (
+            const args = [];
+            if (!this.check(CT.RPAREN)) {
+              args.push(this.expression());
+              while (this.check(CT.COMMA)) {
+                this.advance();
+                args.push(this.expression());
+              }
+            }
+            this.expect(CT.RPAREN, "Esperado ')'");
+            return {
+              type: "CallExpr",
+              callee: `${tok.lexeme}.${memberTok.lexeme}`,
+              args,
+              line: tok.line,
+              column: tok.column,
+            };
+          }
+          return {
+            type: "Identifier",
+            name: `${tok.lexeme}.${memberTok.lexeme}`,
+            line: tok.line,
+            column: tok.column,
+          };
+        }
         // Function call
         if (this.check(CT.LPAREN)) {
           this.advance(); // (
@@ -1081,6 +1723,29 @@ const CToDotmon = (() => {
             type: "CallExpr",
             callee: tok.lexeme,
             args,
+            line: tok.line,
+            column: tok.column,
+          };
+        }
+        // Post-increment in expression context
+        if (this.check(CT.OP_PLUSPLUS)) {
+          this.advance();
+          return {
+            type: "BinaryExpr",
+            op: "+",
+            left: { type: "Identifier", name: tok.lexeme, line: tok.line, column: tok.column },
+            right: { type: "IntLiteral", value: 1, line: tok.line, column: tok.column },
+            line: tok.line,
+            column: tok.column,
+          };
+        }
+        if (this.check(CT.OP_MINUSMINUS)) {
+          this.advance();
+          return {
+            type: "BinaryExpr",
+            op: "-",
+            left: { type: "Identifier", name: tok.lexeme, line: tok.line, column: tok.column },
+            right: { type: "IntLiteral", value: 1, line: tok.line, column: tok.column },
             line: tok.line,
             column: tok.column,
           };
@@ -1113,6 +1778,10 @@ const CToDotmon = (() => {
         "char[]": "Moji",
         char: "Bit",
         void: "void",
+        "unsigned int": "Baby",
+        "unsigned long": "Rook",
+        "unsigned char": "Bit",
+        unsigned: "Baby",
       };
       return map[cType] || "Baby";
     }
